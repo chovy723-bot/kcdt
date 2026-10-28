@@ -6,8 +6,19 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -q "yfinance>=0.2.66" "curl_cffi>=0.13"
       - run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-          for t in NVDA AAPL; do echo "== nasdaq $t"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/company/$t/revenue?limit=1" | head -c 2500; echo; done
-          echo "== sec frame"; curl -s -m 60 -A "KCDT research kcdt-bot@users.noreply.github.com" https://data.sec.gov/api/xbrl/frames/us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax/USD/CY2025Q2.json -o f.json -w "%{http_code} %{size_download}\n"; head -c 600 f.json; echo
-          echo "== sec facts"; curl -s -m 60 -A "KCDT research kcdt-bot@users.noreply.github.com" https://data.sec.gov/api/xbrl/companyconcept/CIK0001045810/us-gaap/Revenues.json -w "\n%{http_code} %{size_download}\n" | tail -c 400
+          echo "== screener"; curl -s -m 60 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=25&download=true" -o s.json -w "%{http_code} %{size_download}\n"; head -c 1500 s.json; echo
+          python -c "import json;d=json.load(open('s.json'));r=d['data']['rows'];print(len(r));import collections;print(collections.Counter(x['country'] for x in r).most_common(5));print(collections.Counter(x['sector'] for x in r).most_common(20))"
+          echo "== econ"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/calendar/economicevents?date=2026-10-28" | head -c 1500; echo
+          echo "== earnings"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/calendar/earnings?date=2026-10-29" | head -c 800; echo
+          echo "== rss"; curl -s -m 30 -A "$UA" "https://www.nasdaq.com/feed/rssoutbound?category=Markets" | head -c 600; echo
+          python - <<'PY'
+          import yfinance as yf, json
+          for t in ["QQQ","^GSPC"]:
+              n = yf.Ticker(t).news
+              print("== yf news", t, len(n)); print(json.dumps(n[:1], default=str)[:1200])
+          PY
