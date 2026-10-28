@@ -3,8 +3,8 @@ import json
 import pathlib
 import sys
 
-from .compute import build
-from .fetch import fetch_all
+from .compute import build, wants_fundamentals
+from .fetch import fetch_prices, fundamentals, universe
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "site"
@@ -21,14 +21,17 @@ def render(data):
 
 
 def main():
-    close, high, universe, names = fetch_all()
-    data = build(close, high, universe, names)
-    if len(data["stocks"]) < 400:
+    meta = universe()
+    px = fetch_prices(meta)
+    fund = fundamentals(wants_fundamentals(px, meta), ROOT / "cache" / "fundamentals.json")
+    data = build(px, meta, fund)
+    if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
     OUT.mkdir(exist_ok=True)
     (OUT / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     (OUT / "index.html").write_text(render(data), encoding="utf-8")
-    print(f"built {data['asof']}: score {data['hist'][-1]['score']}, {len(data['stocks'])} stocks")
+    print(f"built {data['asof']}: score {data['hist'][-1]['score']}, "
+          f"{len(data['stocks'])} stocks, {data['nfund']} with fundamentals")
 
 
 if __name__ == "__main__":

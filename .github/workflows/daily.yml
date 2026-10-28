@@ -25,6 +25,12 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # Fundamentals are slow to fetch, so keep them between runs and refresh the stalest each day
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: fundamentals-${{ github.run_id }}
+          restore-keys: fundamentals-
       - run: python -m kcdt
       - uses: actions/upload-pages-artifact@v3
         with:
