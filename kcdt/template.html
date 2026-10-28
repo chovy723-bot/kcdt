@@ -87,7 +87,12 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .fng .vals b{display:block;font-family:var(--f-data);font-size:15px}
 .thermo{display:grid;gap:12px;align-content:start}
 .score{display:flex;align-items:baseline;gap:10px}
-.score b{font-family:var(--f-display);font-weight:900;font-size:64px;line-height:1}
+.score b{font-family:var(--f-display);font-weight:900;font-size:52px;line-height:1}
+.temp1{display:grid;gap:8px}
+.temp1+.temp1{border-top:1px solid var(--soft);padding-top:12px}
+.temp1 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panic{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 8%,var(--panel));border-radius:12px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
+.panic b{color:var(--hot);font-size:16px}
 .score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
 .zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
 .scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
@@ -183,17 +188,9 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   <main class="view" id="v-market">
     <section aria-labelledby="h-temp">
       <div class="sechead"><h2 id="h-temp">市場溫度</h2><span class="muted small">溫度：8 個指標，每個 0 至 2 分，總分愈高愈危險</span></div>
+      <div class="panic" id="panic" role="status" hidden></div>
       <div class="hero">
-        <div class="panel thermo">
-          <span class="eyebrow">今日溫度</span>
-          <div class="score"><b class="num" id="score"></b><span>/ 16</span></div>
-          <div><span class="zone" id="zone"></span></div>
-          <div style="display:grid;gap:6px">
-            <div class="scale"><i id="needle"></i></div>
-            <div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>
-          </div>
-          <p class="muted small" id="tempnote"></p>
-        </div>
+        <div class="panel thermo" id="thermo"></div>
         <div class="panel fng" id="fng" aria-labelledby="h-fng">
           <span class="eyebrow" id="h-fng">CNN 恐懼與貪婪指數</span>
           <svg class="chart" id="fnggauge" viewBox="0 0 240 126" role="img"></svg>
@@ -201,8 +198,9 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
           <svg class="chart" id="fngline" viewBox="0 0 260 54" role="img" aria-label="恐懼與貪婪指數一年走勢"></svg>
           <p class="muted small" id="fngnote"></p>
         </div>
-        <div class="panel wide" style="display:grid;gap:8px">
-          <div class="sechead"><h3>溫度：過去 60 個交易日</h3><div class="legend"><span><i style="background:var(--cool)"></i>0–4 健康</span><span><i style="background:var(--warm)"></i>5–9 警戒</span><span><i style="background:var(--hot)"></i>10–16 危險</span></div></div>
+        <div class="panel wide" style="display:grid;gap:8px;align-content:start">
+          <div class="sechead"><h3>溫度：過去 60 個交易日</h3><div class="controls tsel"></div></div>
+          <div class="legend"><span><i style="background:var(--cool)"></i>0–4 健康</span><span><i style="background:var(--warm)"></i>5–9 警戒</span><span><i style="background:var(--hot)"></i>10–16 危險</span></div>
           <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日溫度分數柱狀圖"></svg>
         </div>
       </div>
@@ -231,7 +229,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     </section>
 
     <section aria-labelledby="h-ind">
-      <div class="sechead"><h2 id="h-ind">溫度指標</h2></div>
+      <div class="sechead"><h2 id="h-ind">溫度指標</h2><div class="controls tsel"></div></div>
       <div class="panel tablewrap">
         <table>
           <thead><tr><th>#</th><th>指標</th><th class="r">今日數值</th><th class="r">黃燈</th><th class="r">紅燈</th><th>得分</th><th>60 日走勢</th></tr></thead>
@@ -437,21 +435,29 @@ function lineChart(svg, series, {min,max,ticks,fmt,labels}){
 
 // ---------- 大市 ----------
 DRAW.market = () => {
-  const H = D.hist, last = H[H.length-1], prev = H[H.length-2];
-  const [zn, zc] = zoneOf(last.score);
-  $('score').textContent = last.score;
-  $('zone').textContent = zn; $('zone').style.background = `var(${zc})`;
-  $('needle').style.left = (last.score/16*100)+'%';
-  const reds = D.rules.filter(r=>last.p[r.k]===2).map(r=>r.n), yel = D.rules.filter(r=>last.p[r.k]===1).map(r=>r.n);
-  $('tempnote').textContent = `前一日 ${prev.score} 分。` + (reds.length?`紅燈：${reds.join('、')}。`:'') + (yel.length?`黃燈：${yel.join('、')}。`:'冇指標亮黃燈。');
-  (function(){
-    const svg=$('scorechart'), W=640,Hh=200,L=28,R=8,T=10,B=26, n=H.length, bw=(W-L-R)/n;
-    const y=v=>T+(Hh-T-B)*(1-v/16);
+  const T = {spx:{n:'大市溫度',sub:'S&P 500',hist:D.hist,rules:D.rules}};
+  if(D.tech) T.ndx={n:'科技股溫度',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
+  $('thermo').innerHTML = Object.values(T).map(t=>{const H=t.hist, last=H[H.length-1], prev=H[H.length-2], [zn,zc]=zoneOf(last.score);
+    const reds=t.rules.filter(r=>last.p[r.k]===2).length, yel=t.rules.filter(r=>last.p[r.k]===1).length;
+    return `<div class="temp1"><div class="row"><span class="eyebrow">${t.n} · ${t.sub}</span><span class="zone" style="background:var(${zc})">${zn}</span></div>
+      <div class="score"><b class="num">${last.score}</b><span>/ 16</span></div>
+      <div class="scale"><i style="left:${last.score/16*100}%"></i></div>
+      <p class="muted small">前一日 ${prev.score} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
+    '<div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>';
+  if(D.panic && D.panic.on){$('panic').hidden=false;$('panic').innerHTML=`<b>恐慌區（第 ${D.panic.day} 日）</b><span>VIX 同波幅雙紅燈。2004 年至今共 522 日，之後 3 個月 QQQ 平均 +9%，79% 時間上升；但恐慌頭 3 日之後仍有 36% 機會再跌 10%。只供參考，唔係買賣建議。</span>`}
+  let tsel='spx';
+  const tbtn=()=>document.querySelectorAll('.tsel').forEach(box=>{box.innerHTML=Object.entries(T).map(([k,t])=>`<button class="tog" data-t="${k}" aria-pressed="${k===tsel}">${t.n}</button>`).join('');
+    box.querySelectorAll('button').forEach(b=>b.onclick=()=>{tsel=b.dataset.t;tbtn();drawTemp()})});
+  const drawTemp=()=>{
+    const H=T[tsel].hist, rules=T[tsel].rules, last=H[H.length-1];
+    const svg=$('scorechart'); svg.innerHTML=''; const W=640,Hh=200,L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
+    const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
     [0,4,9,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=v});
     H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${h.score} 分`});
     [0,Math.floor(n/3),Math.floor(2*n/3),n-1].forEach(i=>el('text',{x:L+i*bw+bw/2,y:Hh-8,'text-anchor':i===n-1?'end':i===0?'start':'middle'},svg).textContent=H[i].d);
-  })();
+    $('indtable').innerHTML = rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${p} 分"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
+  };
 
   fearGreed();
   $('minis').innerHTML = D.minis.map((m,i)=>{const n=m.c.length, ch=m.c[n-1]-m.c[n-2], p=ch/m.c[n-2]*100;
@@ -469,7 +475,7 @@ DRAW.market = () => {
   $('b-all').onclick=()=>{setPressed(['b-ndx','b-all'],'b-all');bars('all')};
   bars('ndx');
 
-  const hn=H.length-1;
+  const H=D.hist, hn=H.length-1;
   lineChart($('breadthchart'),[{v:H.map(h=>h.n50),c:'var(--accent)',area:true},{v:H.map(h=>h.n200),c:'var(--warm)'}],
     {min:0,max:100,ticks:[0,25,50,75,100],fmt:t=>t+'%',labels:[[0,H[0].d,'start'],[Math.floor(hn/2),H[Math.floor(hn/2)].d,'middle'],[hn,H[hn].d,'end']]});
   const C=D.spx.close, ma=k=>C.map((_,i)=>i<k-1?null:C.slice(i-k+1,i+1).reduce((a,b)=>a+b,0)/k);
@@ -477,14 +483,14 @@ DRAW.market = () => {
   lineChart($('spxchart'),[{v:C,c:'var(--ink)',w:1.4},{v:ma(50),c:'var(--accent)'},{v:ma(200),c:'var(--warm)'}],
     {min:lo,max:hi,ticks:tks,fmt:t=>t.toLocaleString('en-US'),labels:[[0,'一年前','start'],[Math.floor(C.length/2),'半年前','middle'],[C.length-1,D.asof.slice(5),'end']]});
 
-  const spark = (vals, rule) => {
+  function spark(vals, rule){
     const w=120,h=30,mn=Math.min(...vals,rule.y,rule.r),mx=Math.max(...vals,rule.y,rule.r),pad=(mx-mn)*.08||1;
     const lo=mn-pad,hi=mx+pad,x=i=>i/(vals.length-1)*(w-4)+2,y=v=>h-2-(h-4)*(v-lo)/(hi-lo);
     const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><line x1="2" x2="${w-2}" y1="${y(rule.y)}" y2="${y(rule.y)}" stroke="var(--warm)" stroke-dasharray="3 3"/><line x1="2" x2="${w-2}" y1="${y(rule.r)}" y2="${y(rule.r)}" stroke="var(--hot)" stroke-dasharray="3 3"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.6"/><circle cx="${x(vals.length-1)}" cy="${y(vals[vals.length-1])}" r="2.6" fill="var(--accent)"/></svg>`;
-  };
-  const cmp = r => r.side==='high'?'≥':'≤';
-  $('indtable').innerHTML = D.rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${p} 分"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
+  }
+  function cmp(r){return r.side==='high'?'≥':'≤'}
+  tbtn(); drawTemp();
 
   const SE=[...D.sectors].sort((a,b)=>b.h6-a.h6), mxs=Math.max(...SE.map(s=>Math.abs(s.h6)));
   const pc = x => `<td class="r num ${cls(x)}">${sgn(x,2)}%</td>`;

@@ -237,12 +237,31 @@ def build(px, meta, fund=None, fng=None):
 
     return dict(
         asof=days[-1].strftime("%Y-%m-%d"),
-        hist=hist, stocks=stocks, idx=idx, sectors=sectors, minis=minis,
+        hist=hist, tech=tech(close, high, meta), panic=_panic(indicator_frame(close, high, close["^VIX"]).dropna()),
+        stocks=stocks, idx=idx, sectors=sectors, minis=minis,
         breadth=dict(all=breadth(stocks), ndx=breadth([s for s in stocks if s["ndx"]])),
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
         sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng,
         nfund=sum(1 for s in stocks if s.get("mcap") is not None))
+
+
+def _panic(ind):
+    from .tech import panic
+    return panic(ind)
+
+
+def tech(close, high, meta):
+    """Nasdaq-100 temperature history in the same shape as the S&P one, or None without ^NDX/^VXN."""
+    from .tech import TECH_RULES, tech_indicator_frame, tech_score
+    if "^NDX" not in close or "^VXN" not in close:
+        return None
+    ind = tech_indicator_frame(close, high, [t for t in meta.index if meta.at[t, "ndx"]]).dropna().tail(HIST_DAYS)
+    hist = []
+    for d, row in ind.iterrows():
+        score, pts = tech_score(row)
+        hist.append(dict(d=d.strftime("%m-%d"), score=score, v={k: round(float(row[k]), 2) for k, *_ in TECH_RULES}, p=pts))
+    return dict(hist=hist, rules=[dict(k=k, n=n, y=y, r=r, side=sd, u=u) for k, n, y, r, sd, u in TECH_RULES]) if hist else None
 
 
 def wants_fundamentals(px, meta):

@@ -268,5 +268,5 @@ def fear_greed(cache_file):
 
 
 def fetch_prices(u):
-    extra = [t for t, _ in INDICES] + [t for t, _ in SECTORS] + DOW30 + ["QQQ"]
+    extra = [t for t, _ in INDICES] + [t for t, _ in SECTORS] + DOW30 + ["QQQ", "^NDX", "^VXN"]
     return prices(sorted(set(list(u.index) + extra)))
