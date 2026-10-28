@@ -1,9 +1,11 @@
-"""Turn daily price history into the dashboard's data object.
+"""Turn daily price history (and cached fundamentals) into the dashboard's data object.
 
-Inputs are wide DataFrames (index = trading dates, columns = tickers) of
-split/dividend-adjusted closes and highs. Nothing here touches the network,
-so it can be tested with any price history.
+Price inputs are a dict of wide DataFrames {"Open","High","Low","Close","Volume"}
+(index = trading dates, columns = tickers), split/dividend-adjusted. Nothing here
+touches the network, so it can be tested with any price history.
 """
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -17,6 +19,22 @@ SECTORS = [("XLK", "科技"), ("SMH", "半導體"), ("XLC", "通訊"), ("XLY", "
 
 INDICES = [("^GSPC", "S&P 500"), ("^IXIC", "Nasdaq 綜合"), ("^DJI", "道指"),
            ("IWM", "羅素 2000 (IWM)"), ("RSP", "等權 S&P (RSP)"), ("^VIX", "VIX")]
+
+MINIS = [("^GSPC", "S&P 500"), ("^IXIC", "NASDAQ"), ("^DJI", "道指"), ("IWM", "羅素 2000")]
+
+# GICS (Wikipedia) -> Yahoo/finviz sector names, and Chinese labels
+GICS_TO_SECTOR = {
+    "Information Technology": "Technology", "Communication Services": "Communication Services",
+    "Consumer Discretionary": "Consumer Cyclical", "Consumer Staples": "Consumer Defensive",
+    "Materials": "Basic Materials", "Financials": "Financial Services", "Health Care": "Healthcare",
+    "Real Estate": "Real Estate", "Industrials": "Industrials", "Energy": "Energy", "Utilities": "Utilities",
+}
+SECTOR_ZH = {
+    "Technology": "科技", "Communication Services": "通訊", "Consumer Cyclical": "非必需消費",
+    "Consumer Defensive": "必需消費", "Basic Materials": "原材料", "Financial Services": "金融",
+    "Healthcare": "醫療", "Real Estate": "房地產", "Industrials": "工業", "Energy": "能源",
+    "Utilities": "公用",
+}
 
 # key, label, yellow, red, direction ("high" = bigger is worse), unit
 RULES = [
@@ -40,7 +58,7 @@ def points(v, yellow, red, side):
 
 
 def indicator_frame(close, high, vix):
-    """All 8 indicators as daily series (percent units)."""
+    """All 8 temperature indicators as daily series (percent units)."""
     spx, spx_h = close["^GSPC"], high["^GSPC"]
     ma50, ma200 = spx.rolling(50).mean(), spx.rolling(200).mean()
     dow = close[[t for t in DOW30 if t in close]]
@@ -57,69 +75,174 @@ def indicator_frame(close, high, vix):
     return df
 
 
-def stock_table(close, high, universe):
-    px = close[[t for t in universe if t in close]].dropna(axis=1, thresh=253)
-    hi = high[px.columns]
-    last, prev = px.iloc[-1], px.iloc[-2]
-    ma50, ma200 = px.rolling(50).mean(), px.rolling(200).mean()
-    hi252 = hi.rolling(252).max().iloc[-1]
-    ret = {k: (last / px.iloc[-1 - k] - 1) * 100 for k in (21, 63, 126, 252)}
-    rs = 0.4 * ret[63] + 0.2 * ret[126] + 0.2 * ret[252] + 0.2 * ret[21]
-    rs_rank = (rs.rank(pct=True) * 98 + 1).round()
-    rows = []
-    for t in px.columns:
-        c, m50, m200 = last[t], ma50[t].iloc[-1], ma200[t].iloc[-1]
-        if np.isnan(c) or np.isnan(m200):
-            continue
-        tt = [c > m50, m50 > m200, c > m200, m200 > ma200[t].iloc[-21], c >= hi252[t] * 0.75]
-        rows.append(dict(
-            s=t, c=round(float(c), 2), chg=round(float((c / prev[t] - 1) * 100), 2),
-            r21=round(float(ret[21][t]), 1), r63=round(float(ret[63][t]), 1),
-            r126=round(float(ret[126][t]), 1), r252=round(float(ret[252][t]), 1),
-            d50=round(float((c / m50 - 1) * 100), 1), d200=round(float((c / m200 - 1) * 100), 1),
-            dh=round(float((c / hi252[t] - 1) * 100), 1),
-            tt=int(sum(bool(x) for x in tt)), rsr=int(rs_rank[t]), dow=t in DOW30))
-    return rows, px, ma50, ma200
+def _f(x, d=2):
+    """float rounded for JSON, or None for missing."""
+    if x is None:
+        return None
+    try:
+        x = float(x)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(x) or math.isinf(x) else round(x, d)
 
 
-def build(close, high, universe, sp500_names=None):
-    """close/high: DataFrames with every ticker needed. universe: S&P 500 tickers."""
-    close, high = close.sort_index(), high.sort_index()
+def _growth(new, old):
+    if new is None or old is None or old == 0:
+        return None
+    return (new / abs(old) - 1) * 100
+
+
+def fundamentals_row(f):
+    """Derived fundamental fields from one cached Yahoo record."""
+    if not f:
+        return {}
+    revq, epsq, reva = f.get("revq") or [], f.get("epsq") or [], f.get("reva") or []
+    # sequential (quarter over previous quarter) growth for the latest 3 quarters
+    rev_seq = [_growth(revq[i], revq[i + 1]) for i in range(min(3, len(revq) - 1))]
+    eps_seq = [_growth(epsq[i], epsq[i + 1]) for i in range(min(3, len(epsq) - 1))]
+    up3 = lambda xs: len(xs) == 3 and all(x is not None and x > 0 for x in xs)
+    ipo_years = None
+    if f.get("ipo"):
+        ipo_years = (pd.Timestamp.now().timestamp() - f["ipo"] / 1000) / (365.25 * 86400)
+    edate = None
+    if f.get("edate"):
+        edate = pd.Timestamp(f["edate"], unit="s").strftime("%Y-%m-%d")
+    return dict(
+        mcap=_f((f.get("mcap") or 0) / 1e9, 2) if f.get("mcap") else None,  # US$ billions
+        beta=_f(f.get("beta")), inst=_f((f["inst"] * 100) if f.get("inst") is not None else None, 1),
+        sq=_f((f["sq"] * 100) if f.get("sq") is not None else None, 1),
+        eq=_f((f["eq"] * 100) if f.get("eq") is not None else None, 1),
+        sa=_f(_growth(reva[0], reva[1]) if len(reva) >= 2 else None, 1),
+        pe=_f(f.get("pe"), 1), fpe=_f(f.get("fpe"), 1),
+        rev3=up3(rev_seq), eps3=up3(eps_seq),
+        ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"),
+    )
+
+
+def build(px, meta, fund=None):
+    """px: dict of OHLCV DataFrames. meta: DataFrame indexed by ticker with n, gics, ndx, sp500...
+    fund: {ticker: cached Yahoo record}."""
+    fund = fund or {}
     # Keep only completed S&P sessions; Yahoo can add a partial row for today
     # (e.g. VIX trades before the cash open), which would leave every stock NaN.
-    days = close["^GSPC"].dropna().index
-    close, high = close.loc[days].ffill(limit=3), high.loc[days].ffill(limit=3)
+    days = px["Close"]["^GSPC"].dropna().index
+    P = {k: v.sort_index().loc[days].ffill(limit=3) for k, v in px.items()}
+    close, high, low, vol = P["Close"], P["High"], P["Low"], P["Volume"]
+
+    # ---- temperature (unchanged method) ----
     ind = indicator_frame(close, high, close["^VIX"]).dropna().tail(HIST_DAYS)
-    stocks, px, ma50, ma200 = stock_table(close, high, universe)
-    above50 = (px > ma50).where(ma50.notna()).mean(axis=1) * 100
-    above200 = (px > ma200).where(ma200.notna()).mean(axis=1) * 100
+
+    # ---- per-stock technicals over the whole universe ----
+    tick = [t for t in meta.index if t in close and close[t].dropna().shape[0] >= 253]
+    c, h, l, v = close[tick], high[tick], low[tick], vol[tick]
+    ma50, ma200 = c.rolling(50).mean(), c.rolling(200).mean()
+    hi252, lo252 = h.rolling(252).max(), l.rolling(252).min()
+    last, prev = c.iloc[-1], c.iloc[-2]
+    chg = (last / prev - 1) * 100
+    ret = {k: (last / c.iloc[-1 - k] - 1) * 100 for k in (5, 15, 21, 63, 126, 252)}
+    rs = 0.4 * ret[63] + 0.2 * ret[126] + 0.2 * ret[252] + 0.2 * ret[21]
+    rs_rank = (rs.rank(pct=True) * 98 + 1).round()
+    avgv50 = v.rolling(50).mean().iloc[-1]
+    rvol = v.iloc[-1] / avgv50
+    new_high = h.iloc[-1] >= hi252.iloc[-2]
+    new_low = l.iloc[-1] <= lo252.iloc[-2]
+
+    # MVP ("ants"): last 15 sessions — 10+ up days, volume +20% vs the 15 before, price +20%
+    up = (c.diff() > 0).tail(15).sum()
+    v15, v15p = v.tail(15).mean(), v.iloc[-30:-15].mean()
+    mvp_m = up >= 10
+    mvp_v = (v15 / v15p - 1) >= 0.20
+    mvp_p = ret[15] >= 20
+    mvp = mvp_m.astype(int) + mvp_v.astype(int) + mvp_p.astype(int)
+
+    stocks = []
+    for t in tick:
+        lc, m50, m200 = last[t], ma50[t].iloc[-1], ma200[t].iloc[-1]
+        if pd.isna(lc) or pd.isna(m200):
+            continue
+        m200b = ma200[t].iloc[-21]
+        tt = [lc > m50, m50 > m200, lc > m200, m200 > m200b, lc >= hi252[t].iloc[-1] * 0.75]
+        gics = meta.at[t, "gics"]
+        sec = fund.get(t, {}).get("ysec") or GICS_TO_SECTOR.get(gics, gics or "")
+        row = dict(
+            s=t, n=meta.at[t, "n"], sec=sec, ndx=bool(meta.at[t, "ndx"]),
+            c=_f(lc), chg=_f(chg[t]), r5=_f(ret[5][t], 1), r21=_f(ret[21][t], 1), r63=_f(ret[63][t], 1),
+            r126=_f(ret[126][t], 1), r252=_f(ret[252][t], 1),
+            d50=_f((lc / m50 - 1) * 100, 1), d200=_f((lc / m200 - 1) * 100, 1),
+            x50=bool(m50 > m200), dh=_f((lc / hi252[t].iloc[-1] - 1) * 100, 1),
+            av=int(avgv50[t]) if not pd.isna(avgv50[t]) else 0, vol=int(v[t].iloc[-1]) if not pd.isna(v[t].iloc[-1]) else 0,
+            rvol=_f(rvol[t]), nh=bool(new_high[t]), nl=bool(new_low[t]),
+            tt=int(sum(bool(x) for x in tt)), rsr=int(rs_rank[t]),
+            mvp=int(mvp[t]), mvpm=int(up[t]), mvpv=_f((v15[t] / v15p[t] - 1) * 100, 0), mvpp=_f(ret[15][t], 1),
+        )
+        row.update(fundamentals_row(fund.get(t)))
+        stocks.append(row)
+
+    # ---- breadth: all stocks and Nasdaq-100 only ----
+    def breadth(rows):
+        n = len(rows) or 1
+        cnt = lambda k: sum(1 for r in rows if k(r))
+        return dict(
+            n=len(rows), adv=cnt(lambda r: (r["chg"] or 0) > 0), dec=cnt(lambda r: (r["chg"] or 0) < 0),
+            nh=cnt(lambda r: r["nh"]), nl=cnt(lambda r: r["nl"]),
+            a50=cnt(lambda r: r["d50"] is not None and r["d50"] > 0),
+            a200=cnt(lambda r: r["d200"] is not None and r["d200"] > 0))
+
+    above50 = (c > ma50).where(ma50.notna()).mean(axis=1) * 100
+    above200 = (c > ma200).where(ma200.notna()).mean(axis=1) * 100
+    nd = [t for t in tick if meta.at[t, "ndx"]]
+    nd50 = (c[nd] > ma50[nd]).where(ma50[nd].notna()).mean(axis=1) * 100
+    nd200 = (c[nd] > ma200[nd]).where(ma200[nd].notna()).mean(axis=1) * 100
 
     hist = []
     for d, row in ind.iterrows():
-        v = {k: round(float(row[k]), 2) for k, *_ in RULES}
-        p = {k: points(v[k], y, r, s) for k, _n, y, r, s, _u in RULES}
-        hist.append(dict(d=d.strftime("%m-%d"), score=sum(p.values()), v=v, p=p,
-                         b50=round(float(above50[d]), 1), b200=round(float(above200[d]), 1)))
+        val = {k: round(float(row[k]), 2) for k, *_ in RULES}
+        pts = {k: points(val[k], y, r, s) for k, _n, y, r, s, _u in RULES}
+        hist.append(dict(d=d.strftime("%m-%d"), score=sum(pts.values()), v=val, p=pts,
+                         b50=_f(above50[d], 1), b200=_f(above200[d], 1),
+                         n50=_f(nd50[d], 1), n200=_f(nd200[d], 1)))
 
-    def chg(t, k):
+    def pct(t, k):
         s = close[t].dropna()
-        return round(float((s.iloc[-1] / s.iloc[-1 - k] - 1) * 100), 2)
+        return _f((s.iloc[-1] / s.iloc[-1 - k] - 1) * 100)
 
     def ytd(t):
         s = close[t].dropna()
         base = s[s.index.year < s.index[-1].year]
-        return round(float((s.iloc[-1] / base.iloc[-1] - 1) * 100), 2) if len(base) else None
+        return _f((s.iloc[-1] / base.iloc[-1] - 1) * 100) if len(base) else None
 
-    sectors = [dict(t=t, n=n, d1=chg(t, 1), d5=chg(t, 5), d10=chg(t, 10), h6=chg(t, 126), ytd=ytd(t))
+    sectors = [dict(t=t, n=n, d1=pct(t, 1), d5=pct(t, 5), d10=pct(t, 10), h6=pct(t, 126), ytd=ytd(t))
                for t, n in SECTORS if t in close]
-    idx = [dict(n=n, l=round(float(close[t].dropna().iloc[-1]), 2), p=round(float(close[t].dropna().iloc[-2]), 2))
+    idx = [dict(n=n, l=_f(close[t].dropna().iloc[-1]), p=_f(close[t].dropna().iloc[-2]))
            for t, n in INDICES if t in close]
-    if sp500_names:
-        for s in stocks:
-            s["n"] = sp500_names.get(s["s"], "")
+    minis = []
+    for t, n in MINIS:
+        if t not in close:
+            continue
+        o = P["Open"][t].tail(60)
+        minis.append(dict(n=n, d=[x.strftime("%m-%d") for x in o.index],
+                          o=[_f(x) for x in o], h=[_f(x) for x in high[t].tail(60)],
+                          l=[_f(x) for x in low[t].tail(60)], c=[_f(x) for x in close[t].tail(60)]))
+
     return dict(
-        asof=close["^GSPC"].dropna().index[-1].strftime("%Y-%m-%d"),
-        hist=hist, stocks=stocks, idx=idx, sectors=sectors,
+        asof=days[-1].strftime("%Y-%m-%d"),
+        hist=hist, stocks=stocks, idx=idx, sectors=sectors, minis=minis,
+        breadth=dict(all=breadth(stocks), ndx=breadth([s for s in stocks if s["ndx"]])),
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
-        nuniv=len(stocks))
+        sector_zh=SECTOR_ZH, nuniv=len(stocks),
+        nfund=sum(1 for s in stocks if s.get("mcap") is not None))
+
+
+def wants_fundamentals(px, meta):
+    """Tickers worth a fundamentals lookup: all Nasdaq-100 plus anything near KC's technical filter."""
+    days = px["Close"]["^GSPC"].dropna().index
+    c = px["Close"].loc[days]
+    v = px["Volume"].loc[days]
+    tick = [t for t in meta.index if t in c]
+    c, v = c[tick], v[tick]
+    last = c.iloc[-1]
+    ma50, ma200 = c.rolling(50).mean().iloc[-1], c.rolling(200).mean().iloc[-1]
+    ok = (last > 20) & (last > ma50 * 0.97) & (ma50 > ma200 * 0.97) & (v.rolling(50).mean().iloc[-1] > 50_000)
+    picked = set(ok[ok].index) | {t for t in tick if meta.at[t, "ndx"]}
+    return sorted(picked)

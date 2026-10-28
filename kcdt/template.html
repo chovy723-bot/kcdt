@@ -1,95 +1,130 @@
 <title>KCDT 美股趨勢溫度計</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="每日美股趨勢數據：市場溫度、市場寬度、Nasdaq-100 熱力圖、訊號表同選股器。計法全公開，只供教育用途。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@600;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: one reading column; a thermometer-led hero, then breadth, sectors, strong stocks, and the open method at the foot. */
+/* Layout: finviz-style overview first (index minis, breadth bars, signals, Nasdaq-100 map), then temperature, breadth history, sectors, screener, method. */
 :root{
   --bg:#f3f5f7; --panel:#ffffff; --ink:#17202b; --muted:#5b6876; --line:#d9dfe6; --soft:#e9edf2;
   --accent:#2a4d8f;
   --cool:#1f8a78; --warm:#c98a12; --hot:#c4372d;
-  --up:#13895a; --down:#c4372d;
+  --up:#13895a; --down:#c4372d; --flat:#8a96a3; --tile-ink:#ffffff;
   --f-display:"Noto Serif HK","Songti TC",serif;
   --f-body:"Noto Sans HK","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
   --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#10151c; --panel:#171e27; --ink:#e6ebf1; --muted:#97a3b1; --line:#2a3440; --soft:#1f2832;
-  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; color-scheme:dark}}
+  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; --flat:#3a4552; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#10151c; --panel:#171e27; --ink:#e6ebf1; --muted:#97a3b1; --line:#2a3440; --soft:#1f2832;
-  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; color-scheme:dark}
+  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; --flat:#3a4552; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
-.wrap{max-width:1080px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
 h1,h2,h3{text-wrap:balance;margin:0}
-h1{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,4vw,34px);letter-spacing:.02em}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,4vw,38px);letter-spacing:.04em}
 h2{font-family:var(--f-display);font-weight:600;font-size:22px}
 h3{font-size:15px;font-weight:700}
 p{margin:0}
+a{color:var(--accent)}
 .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
+.small{font-size:12px}
 .eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500}
 .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+nav.jump{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+nav.jump a{text-decoration:none;color:var(--muted)}
+nav.jump a:hover{color:var(--ink)}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
-.ticker{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.ticker div{background:var(--panel);padding:10px 14px;display:grid;gap:2px}
-.ticker .n{font-size:12px;color:var(--muted)}
-.ticker .v{font-family:var(--f-data);font-size:17px;font-weight:600}
 .up{color:var(--up)} .down{color:var(--down)}
-section{display:grid;gap:14px}
+section{display:grid;gap:14px;scroll-margin-top:12px}
 .sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-.hero{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px}
-@media (max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}}
-.thermo{display:grid;gap:14px;align-content:start}
-.score{display:flex;align-items:baseline;gap:10px}
-.score b{font-family:var(--f-display);font-weight:900;font-size:76px;line-height:1}
-.score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
-.zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:#fff;font-size:15px}
-.scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
-.scale i{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
-.scalelab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-family:var(--f-data);font-size:11px}
 .grid line{stroke:var(--soft)}
 .tablewrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:14px}
-th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:9px 10px;border-bottom:1px solid var(--soft);vertical-align:middle}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 9px;border-bottom:1px solid var(--soft);vertical-align:middle}
 td.r,th.r{text-align:right}
 tr:last-child td{border-bottom:0}
-.pts{display:inline-flex;gap:3px}
-.pts i{width:10px;height:10px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
-.pts i.on1{background:var(--warm);border-color:var(--warm)}
-.pts i.on2{background:var(--hot);border-color:var(--hot)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-.kpi{display:grid;gap:4px}
-.kpi b{font-family:var(--f-data);font-size:26px;font-weight:600}
-.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
-@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
-.bar{position:relative;height:8px;min-width:80px;background:var(--soft);border-radius:4px}
-.bar i{position:absolute;top:0;bottom:0;border-radius:4px}
-.bar .mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button.tog{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.tog{font:inherit;font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 button.tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
 button.tog:focus-visible,th button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 th button[data-active="true"]{color:var(--ink);font-weight:700}
-.tt{display:inline-flex;gap:2px}
-.tt i{width:7px;height:14px;border-radius:2px;background:var(--soft)}
-.tt i.ok{background:var(--up)}
-.rs{font-family:var(--f-data);font-weight:600;padding:1px 8px;border-radius:5px;background:var(--soft)}
-.method{display:grid;gap:12px;font-size:14px}
-.method ol{margin:0;padding-left:20px;display:grid;gap:6px}
 .note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px}
+
+/* overview */
+.minis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:980px){.minis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.minis{grid-template-columns:minmax(0,1fr)}}
+.mini{display:grid;gap:4px;padding:12px 12px 6px}
+.mini .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mini .hd b{font-size:15px}
+.bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:980px){.bars{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.bars{grid-template-columns:minmax(0,1fr)}}
+.bb{display:grid;gap:6px;padding:10px 12px}
+.bb .lab{display:flex;justify-content:space-between;font-size:12px;gap:8px}
+.bb .lab b{font-weight:600}
+.bb .track{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--soft)}
+.bb .track i{display:block;height:100%}
+.ov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:980px){.ov{grid-template-columns:minmax(0,1fr)}}
+.sig td{padding:5px 8px;font-size:13px}
+.sig .tag{font-size:12px;color:var(--accent);white-space:nowrap}
+.sig tr.grp td{border-bottom:0;padding-top:10px;font-size:12px;color:var(--muted);font-weight:500}
+.heat svg text{font-family:var(--f-data);pointer-events:none}
+.heat .t1{font-weight:600;fill:var(--tile-ink)}
+.heat .t2{fill:var(--tile-ink);opacity:.9}
+.heat .sl{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+
+/* temperature */
+.hero{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}}
+.thermo{display:grid;gap:14px;align-content:start}
+.score{display:flex;align-items:baseline;gap:10px}
+.score b{font-family:var(--f-display);font-weight:900;font-size:76px;line-height:1}
+.score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
+.zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
+.scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
+.scale i{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
+.scalelab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.pts{display:inline-flex;gap:3px}
+.pts i{width:10px;height:10px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
+.pts i.on1{background:var(--warm);border-color:var(--warm)}
+.pts i.on2{background:var(--hot);border-color:var(--hot)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.bar{position:relative;height:8px;min-width:80px;background:var(--soft);border-radius:4px}
+.bar i{position:absolute;top:0;bottom:0;border-radius:4px}
+.bar .mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+
+/* screener */
+.filters{display:grid;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--soft);box-shadow:inset 3px 0 0 var(--accent)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mvp{display:inline-block;width:11px;height:11px;transform:rotate(45deg);border-radius:2px;background:var(--soft);border:1px solid var(--line)}
+.mvp.m3{background:var(--up);border-color:var(--up)}
+.mvp.m2{background:var(--warm);border-color:var(--warm)}
+.mvp.m1{background:var(--flat);border-color:var(--flat)}
+.tt{display:inline-flex;gap:2px}
+.tt i{width:6px;height:13px;border-radius:2px;background:var(--soft)}
+.tt i.ok{background:var(--up)}
+.rs{font-family:var(--f-data);font-weight:600;padding:1px 7px;border-radius:5px;background:var(--soft)}
+.yes{color:var(--up);font-weight:700}
+.method{display:grid;gap:12px;font-size:14px}
+.method ol,.method ul{margin:0;padding-left:20px;display:grid;gap:6px}
 footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
-code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px 5px;border-radius:4px}
 </style>
 
 <div class="wrap">
@@ -97,18 +132,43 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
     <div style="display:grid;gap:4px">
       <span class="eyebrow">美股趨勢溫度計</span>
       <h1>KCDT</h1>
-      <p class="muted">用公開、可重算嘅方法，每日睇美股大市處於咩溫度、幾多股企穩趨勢、邊啲股相對強勢。</p>
+      <p class="muted">每日睇美股大市溫度、科技股寬度、邊啲股相對強勢。計法全公開，可以自己重算。</p>
     </div>
     <div style="display:grid;gap:6px;justify-items:end">
       <span class="badge">數據截至 <b class="num" id="asof"></b> 美股收市</span>
       <span class="badge">只供數據及教育用途，唔係投資建議</span>
     </div>
+    <nav class="jump" aria-label="跳去">
+      <a href="#overview">總覽</a><a href="#signals">訊號</a><a href="#map">熱力圖</a><a href="#temp">市場溫度</a><a href="#breadth">寬度走勢</a><a href="#sectors">板塊</a><a href="#screener">選股器</a><a href="#method">計法</a>
+    </nav>
   </header>
 
-  <div class="ticker" id="ticker"></div>
+  <section id="overview" aria-label="大市總覽">
+    <div class="minis" id="minis"></div>
+    <div class="sechead">
+      <h3>市場寬度 <span class="muted small" id="bnote"></span></h3>
+      <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">全部 <span id="b-alln"></span> 隻</button></div>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
 
-  <section aria-labelledby="h-temp">
-    <div class="sechead"><h2 id="h-temp">市場溫度</h2><span class="muted" style="font-size:13px">8 個指標，每個 0 至 2 分，總分 0 至 16</span></div>
+  <section id="signals" aria-labelledby="h-sig">
+    <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：Nasdaq-100 + S&amp;P 500/400/600</span></div>
+    <div class="ov">
+      <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
+      <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="map" aria-labelledby="h-map">
+    <div class="sechead"><h2 id="h-map">Nasdaq-100 熱力圖</h2>
+      <div class="controls"><button class="tog" id="h-1" aria-pressed="true">1 日</button><button class="tog" id="h-5" aria-pressed="false">5 日</button><button class="tog" id="h-21" aria-pressed="false">1 個月</button></div></div>
+    <div class="panel heat"><svg class="chart" id="heat" viewBox="0 0 1200 620" role="img" aria-label="Nasdaq-100 按板塊同市值嘅表現熱力圖"></svg>
+      <p class="muted small" id="heatnote" style="margin-top:6px"></p></div>
+  </section>
+
+  <section id="temp" aria-labelledby="h-temp">
+    <div class="sechead"><h2 id="h-temp">市場溫度</h2><span class="muted small">8 個指標，每個 0 至 2 分，總分 0 至 16</span></div>
     <div class="hero">
       <div class="panel thermo">
         <span class="eyebrow">今日溫度</span>
@@ -118,7 +178,7 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
           <div class="scale"><i id="needle"></i></div>
           <div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>
         </div>
-        <p class="muted" style="font-size:13px" id="tempnote"></p>
+        <p class="muted small" id="tempnote"></p>
       </div>
       <div class="panel" style="display:grid;gap:8px">
         <div class="sechead"><h3>過去 60 個交易日嘅溫度</h3><div class="legend"><span><i style="background:var(--cool)"></i>0–4 健康</span><span><i style="background:var(--warm)"></i>5–9 警戒</span><span><i style="background:var(--hot)"></i>10–16 危險</span></div></div>
@@ -133,13 +193,12 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
     </div>
   </section>
 
-  <section aria-labelledby="h-breadth">
-    <div class="sechead"><h2 id="h-breadth">市場寬度</h2><span class="muted" style="font-size:13px" id="univnote"></span></div>
-    <div class="panel kpis" id="kpis"></div>
+  <section id="breadth" aria-labelledby="h-breadth">
+    <div class="sechead"><h2 id="h-breadth">寬度走勢</h2></div>
     <div class="two">
       <div class="panel" style="display:grid;gap:8px">
-        <div class="sechead"><h3>企喺均線上嘅股票比例</h3><div class="legend"><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
-        <svg class="chart" id="breadthchart" viewBox="0 0 640 220" role="img" aria-label="企喺 50 日及 200 日線上嘅股票比例"></svg>
+        <div class="sechead"><h3>Nasdaq-100 企喺均線上嘅比例</h3><div class="legend"><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
+        <svg class="chart" id="breadthchart" viewBox="0 0 640 220" role="img" aria-label="Nasdaq-100 企喺 50 日及 200 日線上嘅比例"></svg>
       </div>
       <div class="panel" style="display:grid;gap:8px">
         <div class="sechead"><h3>S&amp;P 500 一年走勢</h3><div class="legend"><span><i style="background:var(--ink)"></i>收市</span><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
@@ -148,8 +207,8 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
     </div>
   </section>
 
-  <section aria-labelledby="h-sector">
-    <div class="sechead"><h2 id="h-sector">板塊強弱</h2><span class="muted" style="font-size:13px">用 SPDR 板塊 ETF 代表，按 6 個月表現排序</span></div>
+  <section id="sectors" aria-labelledby="h-sector">
+    <div class="sechead"><h2 id="h-sector">板塊強弱</h2><span class="muted small">用 SPDR 板塊 ETF 代表，按 6 個月表現排序</span></div>
     <div class="panel tablewrap">
       <table>
         <thead><tr><th>板塊</th><th class="r">今日</th><th class="r">5 日</th><th class="r">10 日</th><th class="r">6 個月</th><th style="min-width:120px">6 個月相對</th><th class="r">年初至今</th></tr></thead>
@@ -158,12 +217,13 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
     </div>
   </section>
 
-  <section aria-labelledby="h-strong">
-    <div class="sechead"><h2 id="h-strong">強勢股名單</h2><span class="muted" style="font-size:13px">相對強度排名 + 趨勢模板，篩選結果唔係推介</span></div>
-    <div class="controls">
-      <button class="tog" id="f-tt" aria-pressed="true">只顯示趨勢模板 5/5</button>
-      <button class="tog" id="f-all" aria-pressed="false">顯示全部股票</button>
-      <span class="muted" style="font-size:13px" id="countnote"></span>
+  <section id="screener" aria-labelledby="h-scr">
+    <div class="sechead"><h2 id="h-scr">選股器</h2><span class="muted small" id="scrcount"></span></div>
+    <div class="panel filters">
+      <div class="sechead"><h3>KC 嘅條件 <span class="muted small">（撳一下可以開關）</span></h3><button class="tog" id="f-reset">還原預設</button></div>
+      <div class="chips" id="chipsA"></div>
+      <h3>加強條件 <span class="muted small">（預設關）</span></h3>
+      <div class="chips" id="chipsB"></div>
     </div>
     <div class="panel tablewrap">
       <table id="stocktable">
@@ -171,51 +231,156 @@ code{font-family:var(--f-data);font-size:13px;background:var(--soft);padding:1px
           <th><button data-k="s">代號</button></th>
           <th class="r"><button data-k="c">收市</button></th>
           <th class="r"><button data-k="chg">今日 %</button></th>
-          <th class="r"><button data-k="rsr" data-active="true">相對強度 ▾</button></th>
+          <th class="r"><button data-k="rsr" data-active="true">RS ▾</button></th>
           <th class="r"><button data-k="r63">3 個月 %</button></th>
-          <th class="r"><button data-k="r126">6 個月 %</button></th>
           <th class="r"><button data-k="dh">距 52 週高 %</button></th>
           <th class="r"><button data-k="d50">距 50 日線 %</button></th>
-          <th><button data-k="tt">趨勢模板</button></th>
+          <th class="r"><button data-k="sq">營收增長 %</button></th>
+          <th class="r"><button data-k="eq">EPS 增長 %</button></th>
+          <th><button data-k="rev3">3 季升</button></th>
+          <th class="r"><button data-k="inst">機構 %</button></th>
+          <th class="r"><button data-k="beta">Beta</button></th>
+          <th class="r"><button data-k="pe">P/E</button></th>
+          <th class="r"><button data-k="mcap">市值 (億)</button></th>
+          <th><button data-k="mvp">MVP</button></th>
+          <th><button data-k="tt">趨勢</button></th>
+          <th><button data-k="edate">業績日</button></th>
         </tr></thead>
         <tbody id="stockbody"></tbody>
       </table>
     </div>
-    <p class="note">相對強度 = 3 個月回報 ×40% + 6 個月、12 個月、1 個月回報各 ×20%，再喺股票池入面排 1 至 99。趨勢模板 5 項：收市高過 50 日線、50 日線高過 200 日線、收市高過 200 日線、200 日線比一個月前向上、收市喺 52 週高位 25% 以內。</p>
+    <p class="note">RS = 3 個月回報 ×40% + 6、12、1 個月回報各 ×20%，喺成個股票池排 1 至 99。營收/EPS 增長 = 最近一季按年。3 季升 = 營收（左）同 EPS（右）連續 3 季按季上升。MVP：綠 = 3 項中晒，黃 = 中 2 項，灰 = 中 1 項。趨勢 = 趨勢模板 5 項中咗幾多項。最多顯示 200 隻。</p>
   </section>
 
-  <section aria-labelledby="h-method">
+  <section id="method" aria-labelledby="h-method">
     <div class="sechead"><h2 id="h-method">計法全公開</h2></div>
     <div class="panel method">
-      <p>每個指標按下面門檻評分：正常 0 分、黃燈 1 分、紅燈 2 分。門檻係原型階段自訂，之後會用 2004 年至今嘅數據回測調校，結果會一齊公開。</p>
+      <h3>市場溫度</h3>
+      <p>每個指標按門檻評分：正常 0 分、黃燈 1 分、紅燈 2 分。門檻係原型階段自訂，之後會用 2004 年至今嘅數據回測調校，結果會一齊公開。「30 隻龍頭股」暫時用道指 30 隻成份股。</p>
       <ol id="methodlist"></ol>
-      <p class="note">「30 隻龍頭股」暫時用道瓊斯工業指數 30 隻成份股。市場寬度同強勢股用 S&amp;P 500 全部成份股（名單每日由 Wikipedia 更新）。價格經拆股及派息調整。數據來源：Yahoo Finance。</p>
+      <h3>總覽同訊號</h3>
+      <ul>
+        <li>升跌：今日收市高過或低過上一日收市。新高/新低：今日最高/最低突破過去 52 週（252 個交易日）嘅最高/最低。</li>
+        <li>成交異常：今日成交量係 50 日平均嘅 2 倍或以上。</li>
+        <li>MVP（螞蟻）：過去 15 個交易日，(M) 有 10 日或以上收高；(V) 平均成交量比之前 15 日多 20% 或以上；(P) 股價升 20% 或以上。</li>
+        <li>熱力圖：Nasdaq-100 成份股按板塊分組，格仔大細 = 市值，顏色 = 升跌幅。</li>
+      </ul>
+      <h3>選股器</h3>
+      <ul>
+        <li>基本面（市值、營收、EPS、機構持股、Beta、P/E、業績日）每日更新一部分，每隻股大約每週更新一次。冇基本面數據嘅股票，基本面條件會當唔符合。</li>
+        <li>趨勢模板 5 項：收市高過 50 日線、50 日線高過 200 日線、收市高過 200 日線、200 日線比一個月前向上、收市喺 52 週高位 25% 以內。</li>
+      </ul>
+      <p class="note">股票池：Nasdaq-100、S&amp;P 500、S&amp;P 400、S&amp;P 600 成份股（名單每日由 Wikipedia 更新），即係美國細價股或以上。價格經拆股及派息調整。數據來源：Yahoo Finance。</p>
     </div>
   </section>
 
   <footer>
     <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻為原型設定，未經回測驗證。</p>
-    <p>每個交易日美股收市後自動更新。今次數據：<span class="num" id="asof2"></span> 收市。</p>
+    <p>每個交易日美股收市後自動更新。今次數據：<span class="num" id="asof2"></span> 收市。原始碼：<a href="https://github.com/chovy723-bot/kcdt">github.com/chovy723-bot/kcdt</a></p>
   </footer>
 </div>
 
 <script>
 const D = /*DATA*/;
 const $ = id => document.getElementById(id);
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const f = (x, d=2) => Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-const sgn = (x, d=1) => (x>0?'+':'') + f(x,d);
+const f = (x, d=2) => x==null?'—':Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sgn = (x, d=1) => x==null?'—':(x>0?'+':'') + f(x,d);
 const cls = x => x>0?'up':x<0?'down':'';
+const kvol = v => v>=1e6?f(v/1e6,2)+'M':v>=1e3?f(v/1e3,0)+'K':String(v);
 const zoneOf = s => s<=4?['健康','--cool']:s<=9?['警戒','--warm']:['危險','--hot'];
+const ZH = D.sector_zh || {};
 const NS='http://www.w3.org/2000/svg';
 function el(tag, attrs, parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
-
+function setPressed(ids, on){ids.forEach(id=>$(id).setAttribute('aria-pressed', id===on?'true':'false'))}
 $('asof').textContent = D.asof; $('asof2').textContent = D.asof;
+const S = D.stocks;
 
-// ticker strip
-$('ticker').innerHTML = D.idx.map(i=>{const c=(i.l/i.p-1)*100;return `<div><span class="n">${i.n}</span><span class="v">${f(i.l)}</span><span class="num ${i.n==='VIX'?'':cls(c)}" style="font-size:13px">${sgn(c,2)}%</span></div>`}).join('');
+// ---------- index minis (daily candles, 60 sessions) ----------
+$('minis').innerHTML = D.minis.map((m,i)=>{const n=m.c.length, lc=m.c[n-1], pc=m.c[n-2], ch=lc-pc, p=ch/pc*100;
+  return `<div class="panel mini"><div class="hd"><b>${m.n}</b><span class="num small muted">${D.asof.slice(5)}</span><span class="num small ${cls(ch)}">${sgn(ch,2)} (${sgn(p,2)}%)</span></div><svg class="chart" id="mini${i}" viewBox="0 0 300 130" role="img" aria-label="${m.n} 60 日 K 線"></svg></div>`}).join('');
+D.minis.forEach((m,i)=>{
+  const svg=$('mini'+i), W=300,H=130,L=4,R=46,T=6,B=16, n=m.c.length;
+  const lo=Math.min(...m.l), hi=Math.max(...m.h), y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo)), bw=(W-L-R)/n;
+  const g=el('g',{class:'grid'},svg);
+  [lo, (lo+hi)/2, hi].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:W-R+4,y:y(v)+4},svg).textContent=v>=1000?Math.round(v).toLocaleString('en-US'):v.toFixed(1)});
+  for(let k=0;k<n;k++){const up=m.c[k]>=m.o[k], col=up?'var(--up)':'var(--down)', x=L+k*bw+bw/2;
+    el('line',{x1:x,x2:x,y1:y(m.h[k]),y2:y(m.l[k]),stroke:col,'stroke-width':1},svg);
+    const top=y(Math.max(m.o[k],m.c[k])), bot=y(Math.min(m.o[k],m.c[k]));
+    el('rect',{x:x-bw*0.35,y:top,width:Math.max(1,bw*0.7),height:Math.max(1,bot-top),fill:col},svg);}
+  [[0,'start'],[n-1,'end']].forEach(([k,a])=>el('text',{x:L+k*bw+bw/2,y:H-3,'text-anchor':a},svg).textContent=m.d[k]);
+});
 
-// score
+// ---------- breadth bars ----------
+function bars(which){
+  const b=D.breadth[which], n=b.n||1, pc=x=>(x/n*100).toFixed(1);
+  const rows=[['升','跌',b.adv,b.dec],['新高','新低',b.nh,b.nl],['50 日線上','下',b.a50,n-b.a50],['200 日線上','下',b.a200,n-b.a200]];
+  $('bars').innerHTML = rows.map(([la,lb,a,c])=>{const tot=(a+c)||1;return `<div class="panel bb"><div class="lab"><span class="up"><b>${la}</b> <span class="num">${pc(a)}% (${a})</span></span><span class="down"><span class="num">(${c}) ${pc(c)}%</span> <b>${lb}</b></span></div><div class="track" role="img" aria-label="${la} ${a}，${lb} ${c}"><i style="width:${a/tot*100}%;background:var(--up)"></i><i style="width:${c/tot*100}%;background:var(--down)"></i></div></div>`}).join('');
+  $('bnote').textContent = which==='ndx'?`Nasdaq-100 成份股 ${b.n} 隻`:`全部股票池 ${b.n} 隻`;
+}
+$('b-alln').textContent = D.breadth.all.n.toLocaleString('en-US');
+$('b-ndx').onclick=()=>{setPressed(['b-ndx','b-all'],'b-ndx');bars('ndx')};
+$('b-all').onclick=()=>{setPressed(['b-ndx','b-all'],'b-all');bars('all')};
+bars('ndx');
+
+// ---------- signal tables ----------
+const topN=(arr,k,dir=-1,n=6)=>[...arr].sort((a,b)=>((a[k]??-1e9)-(b[k]??-1e9))*dir).slice(0,n);
+const sigRows=(title,rows,tag)=>`<tr class="grp"><td colspan="5">${title}</td></tr>`+(rows.length?rows.map(s=>`<tr><td><b>${s.s}</b>${s.ndx?' <span class="muted small">N100</span>':''}</td><td class="r num">${f(s.c)}</td><td class="r num ${cls(s.chg)}">${sgn(s.chg,2)}%</td><td class="r num muted">${kvol(s.vol)}</td><td class="tag">${tag(s)}</td></tr>`).join(''):'<tr><td colspan="5" class="muted small">今日冇</td></tr>');
+$('sigL').innerHTML =
+  sigRows('升幅最大', topN(S,'chg'), ()=> '升幅榜') +
+  sigRows('創 52 週新高（按升幅）', topN(S.filter(s=>s.nh),'chg'), ()=>'新高') +
+  sigRows('成交異常（今日 ÷ 50 日平均）', topN(S.filter(s=>s.rvol>=2),'rvol'), s=>`成交 ${f(s.rvol,1)} 倍`) +
+  sigRows('MVP 螞蟻 3 項中晒（按 15 日升幅）', topN(S.filter(s=>s.mvp===3),'mvpp'), s=>`15 日 ${sgn(s.mvpp)}%`);
+$('sigR').innerHTML =
+  sigRows('跌幅最大', topN(S,'chg',1), ()=>'跌幅榜') +
+  sigRows('創 52 週新低（按跌幅）', topN(S.filter(s=>s.nl),'chg',1), ()=>'新低') +
+  sigRows('Nasdaq-100 RS 最強', topN(S.filter(s=>s.ndx),'rsr'), s=>`RS ${s.rsr}`) +
+  sigRows('MVP 中 2 項（按 15 日升幅）', topN(S.filter(s=>s.mvp===2),'mvpp'), s=>`${s.mvpm} 日升 · 量 ${sgn(s.mvpv,0)}%`);
+
+// ---------- Nasdaq-100 heat map (squarified treemap) ----------
+function squarify(items, x, y, w, h){ // items: [{v,...}] sorted desc; returns items with x,y,w,h
+  const out=[], total=items.reduce((a,b)=>a+b.v,0); if(!total) return out;
+  const scale=w*h/total; let rest=items.map(it=>({...it,a:it.v*scale}));
+  while(rest.length){
+    const short=Math.min(w,h); let row=[rest[0]], i=1;
+    const worst=r=>{const s=r.reduce((a,b)=>a+b.a,0), mx=Math.max(...r.map(z=>z.a)), mn=Math.min(...r.map(z=>z.a));return Math.max(short*short*mx/(s*s), s*s/(short*short*mn))};
+    while(i<rest.length && worst([...row,rest[i]])<=worst(row)){row.push(rest[i]);i++}
+    const s=row.reduce((a,b)=>a+b.a,0), thick=s/short; let off=0;
+    row.forEach(r=>{const len=r.a/thick; if(w>=h) out.push({...r,x:x,y:y+off,w:thick,h:len}); else out.push({...r,x:x+off,y:y,w:len,h:thick}); off+=len});
+    if(w>=h){x+=thick;w-=thick}else{y+=thick;h-=thick}
+    rest=rest.slice(i);
+  }
+  return out;
+}
+let heatK='chg';
+function heat(){
+  const svg=$('heat'); svg.innerHTML='';
+  const W=1200,H=620, rows=S.filter(s=>s.ndx), withCap=rows.filter(s=>s.mcap);
+  const useCap=withCap.length>=rows.length*0.8, list=(useCap?withCap:rows).map(s=>({...s,v:useCap?s.mcap:(s.av*s.c)}));
+  const groups={}; list.forEach(s=>{(groups[s.sec]=groups[s.sec]||[]).push(s)});
+  const gl=Object.entries(groups).map(([k,v])=>({k,v:v.reduce((a,b)=>a+b.v,0),items:v.sort((a,b)=>b.v-a.v)})).sort((a,b)=>b.v-a.v);
+  const span=heatK==='chg'?3:heatK==='r5'?6:12;
+  squarify(gl,0,0,W,H).forEach(g=>{
+    el('rect',{x:g.x,y:g.y,width:g.w,height:g.h,fill:'var(--panel)',stroke:'var(--bg)','stroke-width':3},svg);
+    const lab=el('text',{x:g.x+5,y:g.y+13,class:'sl'},svg); lab.textContent=g.w>60?(ZH[g.k]||g.k):'';
+    squarify(g.items,g.x+2,g.y+17,Math.max(0,g.w-4),Math.max(0,g.h-19)).forEach(t=>{
+      const v=t[heatK]??0, k=Math.min(1,Math.abs(v)/span), mix=Math.round(25+75*k);
+      const fill=v>0?`color-mix(in srgb, var(--up) ${mix}%, var(--flat))`:v<0?`color-mix(in srgb, var(--down) ${mix}%, var(--flat))`:'var(--flat)';
+      const r=el('rect',{x:t.x,y:t.y,width:Math.max(0,t.w-1),height:Math.max(0,t.h-1),fill},svg);
+      el('title',{},r).textContent=`${t.s} ${t.n}\n${sgn(v,2)}%${t.mcap?`\n市值 ${f(t.mcap*10,0)} 億美元`:''}`;
+      const fs=Math.max(9,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
+      let fz=fs; while(fz>8 && t.s.length*fz*0.64+6>t.w) fz--;
+      if(t.s.length*fz*0.64+6<=t.w && t.h>fz*1.3){
+        const a=el('text',{x:t.x+t.w/2,y:t.y+t.h/2-(t.h>fz*2.6?fz*0.15:-fz*0.35),'text-anchor':'middle',class:'t1','font-size':fz},svg); a.textContent=t.s;
+        if(t.h>fz*2.6){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
+      }
+    });
+  });
+  $('heatnote').textContent = useCap?`${list.length} 隻，格仔大細 = 市值。顏色深淺：±${span}% 或以上最深。`:`暫時未有齊市值數據，格仔大細暫用成交金額代替。`;
+}
+[['h-1','chg'],['h-5','r5'],['h-21','r21']].forEach(([id,k])=>$(id).onclick=()=>{setPressed(['h-1','h-5','h-21'],id);heatK=k;heat()});
+heat();
+
+// ---------- temperature ----------
 const H = D.hist, last = H[H.length-1], prev = H[H.length-2];
 const [zn, zc] = zoneOf(last.score);
 $('score').textContent = last.score;
@@ -223,38 +388,24 @@ $('zone').textContent = zn; $('zone').style.background = `var(${zc})`;
 $('needle').style.left = (last.score/16*100)+'%';
 const reds = D.rules.filter(r=>last.p[r.k]===2).map(r=>r.n), yel = D.rules.filter(r=>last.p[r.k]===1).map(r=>r.n);
 $('tempnote').textContent = `前一日 ${prev.score} 分。` + (reds.length?`紅燈：${reds.join('、')}。`:'') + (yel.length?`黃燈：${yel.join('、')}。`:'冇指標亮黃燈。');
-
-function scoreChart(){
+(function(){
   const svg=$('scorechart'), W=640,Hh=200,L=28,R=8,T=10,B=26, n=H.length, bw=(W-L-R)/n;
   const y=v=>T+(Hh-T-B)*(1-v/16);
   const g=el('g',{class:'grid'},svg);
   [0,4,9,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=v});
   H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${h.score} 分`});
-  [0,20,40,59].forEach(i=>el('text',{x:L+i*bw+bw/2,y:Hh-8,'text-anchor':i===59?'end':i===0?'start':'middle'},svg).textContent=H[i].d);
-}
-scoreChart();
-
+  [0,Math.floor(n/3),Math.floor(2*n/3),n-1].forEach(i=>el('text',{x:L+i*bw+bw/2,y:Hh-8,'text-anchor':i===n-1?'end':i===0?'start':'middle'},svg).textContent=H[i].d);
+})();
 function spark(vals, rule){
   const w=120,h=30,mn=Math.min(...vals,rule.y,rule.r),mx=Math.max(...vals,rule.y,rule.r),pad=(mx-mn)*.08||1;
   const lo=mn-pad,hi=mx+pad,x=i=>i/(vals.length-1)*(w-4)+2,y=v=>h-2-(h-4)*(v-lo)/(hi-lo);
   const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const lv=vals[vals.length-1];
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><line x1="2" x2="${w-2}" y1="${y(rule.y)}" y2="${y(rule.y)}" stroke="var(--warm)" stroke-dasharray="3 3" stroke-width="1"/><line x1="2" x2="${w-2}" y1="${y(rule.r)}" y2="${y(rule.r)}" stroke="var(--hot)" stroke-dasharray="3 3" stroke-width="1"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.6"/><circle cx="${x(vals.length-1)}" cy="${y(lv)}" r="2.6" fill="var(--accent)"/></svg>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><line x1="2" x2="${w-2}" y1="${y(rule.y)}" y2="${y(rule.y)}" stroke="var(--warm)" stroke-dasharray="3 3"/><line x1="2" x2="${w-2}" y1="${y(rule.r)}" y2="${y(rule.r)}" stroke="var(--hot)" stroke-dasharray="3 3"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.6"/><circle cx="${x(vals.length-1)}" cy="${y(vals[vals.length-1])}" r="2.6" fill="var(--accent)"/></svg>`;
 }
 const cmp = r => r.side==='high'?'≥':'≤';
 $('indtable').innerHTML = D.rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${p} 分"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
 
-// breadth KPIs
-const S=D.stocks, n=S.length;
-const near = S.filter(s=>s.dh>=-5).length, deep = S.filter(s=>s.dh<=-20).length, adv = S.filter(s=>s.chg>0).length;
-$('univnote').textContent = `S&P 500 成份股（${n} 隻有足夠數據）`;
-$('kpis').innerHTML = [
-  ['企 50 日線上', last.b50+'%', `前日 ${prev.b50}%`],
-  ['企 200 日線上', last.b200+'%', `前日 ${prev.b200}%`],
-  ['今日上升 / 下跌', `${adv} / ${n-adv}`, '股票池入面嘅家數'],
-  ['距 52 週高 5% 內', `${near} 隻`, `跌超過 20% 嘅有 ${deep} 隻`],
-].map(k=>`<div class="kpi"><span class="eyebrow">${k[0]}</span><b>${k[1]}</b><span class="muted" style="font-size:12px">${k[2]}</span></div>`).join('');
-
+// ---------- breadth history + S&P chart ----------
 function lineChart(svg, series, {min,max,ticks,fmt,labels}){
   const W=640,Hh=220,L=44,R=10,T=10,B=26;
   const len=series[0].v.length, x=i=>L+(W-L-R)*i/(len-1), y=v=>T+(Hh-T-B)*(1-(v-min)/(max-min));
@@ -268,46 +419,81 @@ function lineChart(svg, series, {min,max,ticks,fmt,labels}){
   });
   labels.forEach(([i,t,a])=>el('text',{x:x(i),y:Hh-8,'text-anchor':a},svg).textContent=t);
 }
-lineChart($('breadthchart'),[{v:H.map(h=>h.b50),c:'var(--accent)',area:true},{v:H.map(h=>h.b200),c:'var(--warm)'}],
-  {min:0,max:100,ticks:[0,25,50,75,100],fmt:t=>t+'%',labels:[[0,H[0].d,'start'],[30,H[30].d,'middle'],[59,H[59].d,'end']]});
-
+const hn=H.length-1;
+lineChart($('breadthchart'),[{v:H.map(h=>h.n50),c:'var(--accent)',area:true},{v:H.map(h=>h.n200),c:'var(--warm)'}],
+  {min:0,max:100,ticks:[0,25,50,75,100],fmt:t=>t+'%',labels:[[0,H[0].d,'start'],[Math.floor(hn/2),H[Math.floor(hn/2)].d,'middle'],[hn,H[hn].d,'end']]});
 const C=D.spx.close, ma=k=>C.map((_,i)=>i<k-1?null:C.slice(i-k+1,i+1).reduce((a,b)=>a+b,0)/k);
 const lo=Math.floor(Math.min(...C)/250)*250, hi=Math.ceil(Math.max(...C)/250)*250, tk=[];for(let t=lo;t<=hi;t+=250)tk.push(t);
 lineChart($('spxchart'),[{v:C,c:'var(--ink)',w:1.4},{v:ma(50),c:'var(--accent)'},{v:ma(200),c:'var(--warm)'}],
-  {min:lo,max:hi,ticks:tk,fmt:t=>t.toLocaleString('en-US'),labels:[[0,'一年前','start'],[126,'半年前','middle'],[251,D.asof.slice(5),'end']]});
+  {min:lo,max:hi,ticks:tk,fmt:t=>t.toLocaleString('en-US'),labels:[[0,'一年前','start'],[Math.floor(C.length/2),'半年前','middle'],[C.length-1,D.asof.slice(5),'end']]});
 
-// sectors
+// ---------- sectors ----------
 const SE=[...D.sectors].sort((a,b)=>b.h6-a.h6), mxs=Math.max(...SE.map(s=>Math.abs(s.h6)));
 const pc = x => `<td class="r num ${cls(x)}">${sgn(x,2)}%</td>`;
-$('sectable').innerHTML = SE.map(s=>{const w=Math.abs(s.h6)/mxs*50;return `<tr><td>${s.n} <span class="muted num" style="font-size:12px">${s.t}</span></td>${pc(s.d1)}${pc(s.d5)}${pc(s.d10)}${pc(s.h6)}<td><div class="bar"><span class="mid"></span><i style="${s.h6>=0?`left:50%;width:${w}%;background:var(--up)`:`right:50%;width:${w}%;background:var(--down)`}"></i></div></td>${pc(s.ytd)}</tr>`}).join('');
+$('sectable').innerHTML = SE.map(s=>{const w=Math.abs(s.h6)/mxs*50;return `<tr><td>${s.n} <span class="muted num small">${s.t}</span></td>${pc(s.d1)}${pc(s.d5)}${pc(s.d10)}${pc(s.h6)}<td><div class="bar"><span class="mid"></span><i style="${s.h6>=0?`left:50%;width:${w}%;background:var(--up)`:`right:50%;width:${w}%;background:var(--down)`}"></i></div></td>${pc(s.ytd)}</tr>`}).join('');
 
-// strong stocks
-let onlyTT=true, sortK='rsr', sortDir=-1;
-function rsColor(r){return r>=80?'var(--up)':r<=30?'var(--down)':'var(--ink)'}
+// ---------- screener ----------
+const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate'];
+const FA=[ // KC's finviz set, on by default
+  ['cap','市值 ≥ 3 億美元',s=>s.mcap!=null&&s.mcap>=0.3],
+  ['sq','營收增長（季，按年）> 5%',s=>s.sq!=null&&s.sq>5],
+  ['sa','營收增長（上財年）> 0',s=>s.sa!=null&&s.sa>0],
+  ['inst','機構持股 > 10%',s=>s.inst!=null&&s.inst>10],
+  ['p50','股價企 50 日線上',s=>s.d50>0],
+  ['x50','50 日線高過 200 日線',s=>s.x50],
+  ['beta','Beta > 1',s=>s.beta!=null&&s.beta>1],
+  ['vol','成交量 > 5 萬',s=>s.vol>50000],
+  ['px','股價 > 20 美元',s=>s.c>20],
+  ['sec','剔走消費、原材料、金融、醫療、房地產',s=>!EXCL.includes(s.sec)],
+];
+const FB=[ // stronger conditions from KC's notes, off by default
+  ['ndx','只睇 Nasdaq-100',s=>s.ndx],
+  ['tech','只睇科技',s=>s.sec==='Technology'],
+  ['tt','趨勢模板 5/5',s=>s.tt===5],
+  ['rs80','RS ≥ 80',s=>s.rsr>=80],
+  ['dh15','距 52 週高 15% 以內',s=>s.dh>=-15],
+  ['rev3','營收 3 季連升',s=>s.rev3],
+  ['eps3','EPS 3 季連升',s=>s.eps3],
+  ['g50','營收或 EPS 增長 ≥ 50%',s=>(s.sq??-1)>=50||(s.eq??-1)>=50],
+  ['mvp2','MVP 中 2 項或以上',s=>s.mvp>=2],
+  ['vol1m','成交量 > 100 萬',s=>s.vol>1e6],
+  ['pe','P/E 50 以下',s=>s.pe!=null&&s.pe>0&&s.pe<=50],
+];
+const on=new Set(FA.map(x=>x[0]));
+function chips(list, box){$(box).innerHTML=list.map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${on.has(k)}">${l}</button>`).join('')}
+function drawChips(){chips(FA,'chipsA');chips(FB,'chipsB');document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const k=b.dataset.f;on.has(k)?on.delete(k):on.add(k);b.setAttribute('aria-pressed',on.has(k));renderStocks()})}
+$('f-reset').onclick=()=>{on.clear();FA.forEach(x=>on.add(x[0]));drawChips();renderStocks()};
+let sortK='rsr', sortDir=-1;
+const rsColor=r=>r>=80?'var(--up)':r<=30?'var(--down)':'var(--ink)';
+const pcell=(x,d=1)=>`<td class="r num ${cls(x)}">${x==null?'<span class="muted">—</span>':sgn(x,d)}</td>`;
 function renderStocks(){
-  const rows=S.filter(s=>!onlyTT||s.tt===5).sort((a,b)=>{const A=a[sortK],B=b[sortK];return (typeof A==='string'?A.localeCompare(B):A-B)*sortDir});
-  $('countnote').textContent = onlyTT?`${n} 隻入面有 ${rows.length} 隻符合晒 5 項趨勢條件`:`共 ${rows.length} 隻`;
-  $('stockbody').innerHTML = rows.map(s=>`<tr><td><b>${s.s}</b>${s.dow?' <span class="muted" style="font-size:11px">道指</span>':''}${s.n?`<div class="muted" style="font-size:11px;line-height:1.2;max-width:180px">${s.n}</div>`:''}</td><td class="r num">${f(s.c)}</td><td class="r num ${cls(s.chg)}">${sgn(s.chg,2)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td class="r num ${cls(s.r63)}">${sgn(s.r63)}</td><td class="r num ${cls(s.r126)}">${sgn(s.r126)}</td><td class="r num">${f(s.dh,1)}</td><td class="r num ${cls(s.d50)}">${sgn(s.d50)}</td><td><span class="tt" aria-label="${s.tt} / 5">${[0,1,2,3,4].map(i=>`<i class="${i<s.tt?'ok':''}"></i>`).join('')}</span> <span class="num muted" style="font-size:12px">${s.tt}/5</span></td></tr>`).join('');
+  const tests=[...FA,...FB].filter(x=>on.has(x[0])).map(x=>x[2]);
+  const rows=S.filter(s=>tests.every(t=>t(s))).sort((a,b)=>{const A=a[sortK],B=b[sortK];if(A==null)return 1;if(B==null)return -1;return (typeof A==='string'?A.localeCompare(B):(A-B))*sortDir});
+  $('scrcount').textContent=`${S.length.toLocaleString('en-US')} 隻入面有 ${rows.length} 隻符合（${D.nfund} 隻有基本面數據）`;
+  $('stockbody').innerHTML = rows.slice(0,200).map(s=>`<tr>
+    <td><b>${s.s}</b>${s.ndx?' <span class="muted small">N100</span>':''}<div class="muted small" style="line-height:1.25;max-width:190px">${s.n||''}${s.sec?` · ${ZH[s.sec]||s.sec}`:''}</div></td>
+    <td class="r num">${f(s.c)}</td>${pcell(s.chg,2)}
+    <td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td>
+    ${pcell(s.r63)}<td class="r num">${f(s.dh,1)}</td>${pcell(s.d50)}${pcell(s.sq)}${pcell(s.eq)}
+    <td class="num">${s.rev3?'<span class="yes">✓</span>':'<span class="muted">·</span>'} ${s.eps3?'<span class="yes">✓</span>':'<span class="muted">·</span>'}</td>
+    <td class="r num">${f(s.inst,0)}</td><td class="r num">${f(s.beta,2)}</td><td class="r num">${s.pe!=null?f(s.pe,1):'—'}</td><td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td>
+    <td title="${s.mvpm} 日收高 · 量 ${sgn(s.mvpv,0)}% · 價 ${sgn(s.mvpp)}%"><span class="mvp m${s.mvp}"></span></td>
+    <td><span class="tt" aria-label="${s.tt} / 5">${[0,1,2,3,4].map(i=>`<i class="${i<s.tt?'ok':''}"></i>`).join('')}</span></td>
+    <td class="num small">${s.edate||'—'}</td></tr>`).join('') || '<tr><td colspan="17" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
 }
-$('f-tt').onclick=()=>{onlyTT=true;$('f-tt').setAttribute('aria-pressed','true');$('f-all').setAttribute('aria-pressed','false');renderStocks()};
-$('f-all').onclick=()=>{onlyTT=false;$('f-all').setAttribute('aria-pressed','true');$('f-tt').setAttribute('aria-pressed','false');renderStocks()};
 document.querySelectorAll('#stocktable th button').forEach(b=>b.onclick=()=>{
-  const k=b.dataset.k; if(sortK===k)sortDir*=-1; else {sortK=k;sortDir=k==='s'?1:-1}
+  const k=b.dataset.k; if(sortK===k)sortDir*=-1; else {sortK=k;sortDir=(k==='s'||k==='edate')?1:-1}
   document.querySelectorAll('#stocktable th button').forEach(x=>{x.dataset.active=x===b?'true':'false';x.textContent=x.textContent.replace(/ [▾▴]$/,'')});
   b.textContent += sortDir<0?' ▾':' ▴'; renderStocks();
 });
-renderStocks();
+drawChips(); renderStocks();
 
-// method
+// ---------- method ----------
 const desc = {
-  vix5:'VIX 恐慌指數收市價嘅 5 日平均。',
-  vs50:'S&P 500 收市 ÷ 50 日平均線 − 1。',
-  pct50:'道指 30 隻成份股入面，收市高過自己 50 日線嘅比例。',
-  dist52:'道指 30 隻成份股各自收市距過去 252 日最高位嘅 %，取平均。',
-  pct200:'道指 30 隻成份股入面，收市高過自己 200 日線嘅比例。',
-  ma50_200:'S&P 500 嘅 50 日線 ÷ 200 日線 − 1。低過 0 即係「死亡交叉」。',
-  rv21:'S&P 500 過去 21 日每日對數回報嘅標準差 × √252。',
-  spx52:'S&P 500 收市 ÷ 過去 252 日最高盤中價 − 1。'
+  vix5:'VIX 恐慌指數收市價嘅 5 日平均。', vs50:'S&P 500 收市 ÷ 50 日平均線 − 1。',
+  pct50:'道指 30 隻成份股入面，收市高過自己 50 日線嘅比例。', dist52:'道指 30 隻成份股各自收市距過去 252 日最高位嘅 %，取平均。',
+  pct200:'道指 30 隻成份股入面，收市高過自己 200 日線嘅比例。', ma50_200:'S&P 500 嘅 50 日線 ÷ 200 日線 − 1。低過 0 即係「死亡交叉」。',
+  rv21:'S&P 500 過去 21 日每日對數回報嘅標準差 × √252。', spx52:'S&P 500 收市 ÷ 過去 252 日最高盤中價 − 1。'
 };
 $('methodlist').innerHTML = D.rules.map(r=>`<li><b>${r.n}</b>：${desc[r.k]} 黃燈 ${cmp(r)} ${r.y}${r.u}，紅燈 ${cmp(r)} ${r.r}${r.u}。</li>`).join('');
 </script>
