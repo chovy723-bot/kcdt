@@ -1,10 +1,10 @@
 <title>KCDT 美股趨勢溫度計</title>
-<meta name="description" content="每日美股趨勢數據：市場溫度、市場寬度、Nasdaq-100 熱力圖、訊號表同選股器。計法全公開，只供教育用途。">
+<meta name="description" content="每日美股趨勢數據：市場溫度、市場寬度、Nasdaq-100 熱力圖、訊號表同選股器。只供教育用途。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@600;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: finviz-style overview first (index minis, breadth bars, signals, Nasdaq-100 map), then temperature, breadth history, sectors, screener, method. */
+/* Layout: finviz-style overview first (index minis, breadth bars, signals, Nasdaq-100 map), then temperature, breadth history, sectors, screener. */
 :root{
   --bg:#f3f5f7; --panel:#ffffff; --ink:#17202b; --muted:#5b6876; --line:#d9dfe6; --soft:#e9edf2;
   --accent:#2a4d8f;
@@ -122,8 +122,6 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .tt i.ok{background:var(--up)}
 .rs{font-family:var(--f-data);font-weight:600;padding:1px 7px;border-radius:5px;background:var(--soft)}
 .yes{color:var(--up);font-weight:700}
-.method{display:grid;gap:12px;font-size:14px}
-.method ol,.method ul{margin:0;padding-left:20px;display:grid;gap:6px}
 footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
 </style>
 
@@ -132,14 +130,14 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <div style="display:grid;gap:4px">
       <span class="eyebrow">美股趨勢溫度計</span>
       <h1>KCDT</h1>
-      <p class="muted">每日睇美股大市溫度、科技股寬度、邊啲股相對強勢。計法全公開，可以自己重算。</p>
+      <p class="muted">每日睇美股大市溫度、科技股寬度、邊啲股相對強勢。</p>
     </div>
     <div style="display:grid;gap:6px;justify-items:end">
       <span class="badge">數據截至 <b class="num" id="asof"></b> 美股收市</span>
       <span class="badge">只供數據及教育用途，唔係投資建議</span>
     </div>
     <nav class="jump" aria-label="跳去">
-      <a href="#overview">總覽</a><a href="#signals">訊號</a><a href="#map">熱力圖</a><a href="#temp">市場溫度</a><a href="#breadth">寬度走勢</a><a href="#sectors">板塊</a><a href="#screener">選股器</a><a href="#method">計法</a>
+      <a href="#overview">總覽</a><a href="#signals">訊號</a><a href="#map">熱力圖</a><a href="#temp">市場溫度</a><a href="#breadth">寬度走勢</a><a href="#sectors">板塊</a><a href="#screener">選股器</a>
     </nav>
   </header>
 
@@ -250,28 +248,6 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       </table>
     </div>
     <p class="note">RS = 3 個月回報 ×40% + 6、12、1 個月回報各 ×20%，喺成個股票池排 1 至 99。營收/EPS 增長 = 最近一季按年。3 季升 = 營收（左）同 EPS（右）連續 3 季按季上升。MVP：綠 = 3 項中晒，黃 = 中 2 項，灰 = 中 1 項。趨勢 = 趨勢模板 5 項中咗幾多項。最多顯示 200 隻。</p>
-  </section>
-
-  <section id="method" aria-labelledby="h-method">
-    <div class="sechead"><h2 id="h-method">計法全公開</h2></div>
-    <div class="panel method">
-      <h3>市場溫度</h3>
-      <p>每個指標按門檻評分：正常 0 分、黃燈 1 分、紅燈 2 分。門檻係原型階段自訂，之後會用 2004 年至今嘅數據回測調校，結果會一齊公開。「30 隻龍頭股」暫時用道指 30 隻成份股。</p>
-      <ol id="methodlist"></ol>
-      <h3>總覽同訊號</h3>
-      <ul>
-        <li>升跌：今日收市高過或低過上一日收市。新高/新低：今日最高/最低突破過去 52 週（252 個交易日）嘅最高/最低。</li>
-        <li>成交異常：今日成交量係 50 日平均嘅 2 倍或以上。</li>
-        <li>MVP（螞蟻）：過去 15 個交易日，(M) 有 10 日或以上收高；(V) 平均成交量比之前 15 日多 20% 或以上；(P) 股價升 20% 或以上。</li>
-        <li>熱力圖：Nasdaq-100 成份股按板塊分組，格仔大細 = 市值，顏色 = 升跌幅。</li>
-      </ul>
-      <h3>選股器</h3>
-      <ul>
-        <li>基本面（市值、營收、EPS、機構持股、Beta、P/E、業績日）每日更新一部分，每隻股大約每週更新一次。冇基本面數據嘅股票，基本面條件會當唔符合。</li>
-        <li>趨勢模板 5 項：收市高過 50 日線、50 日線高過 200 日線、收市高過 200 日線、200 日線比一個月前向上、收市喺 52 週高位 25% 以內。</li>
-      </ul>
-      <p class="note">股票池：Nasdaq-100、S&amp;P 500、S&amp;P 400、S&amp;P 600 成份股（名單每日由 Wikipedia 更新），即係美國細價股或以上。價格經拆股及派息調整。數據來源：Yahoo Finance。</p>
-    </div>
   </section>
 
   <footer>
@@ -488,12 +464,4 @@ document.querySelectorAll('#stocktable th button').forEach(b=>b.onclick=()=>{
 });
 drawChips(); renderStocks();
 
-// ---------- method ----------
-const desc = {
-  vix5:'VIX 恐慌指數收市價嘅 5 日平均。', vs50:'S&P 500 收市 ÷ 50 日平均線 − 1。',
-  pct50:'道指 30 隻成份股入面，收市高過自己 50 日線嘅比例。', dist52:'道指 30 隻成份股各自收市距過去 252 日最高位嘅 %，取平均。',
-  pct200:'道指 30 隻成份股入面，收市高過自己 200 日線嘅比例。', ma50_200:'S&P 500 嘅 50 日線 ÷ 200 日線 − 1。低過 0 即係「死亡交叉」。',
-  rv21:'S&P 500 過去 21 日每日對數回報嘅標準差 × √252。', spx52:'S&P 500 收市 ÷ 過去 252 日最高盤中價 − 1。'
-};
-$('methodlist').innerHTML = D.rules.map(r=>`<li><b>${r.n}</b>：${desc[r.k]} 黃燈 ${cmp(r)} ${r.y}${r.u}，紅燈 ${cmp(r)} ${r.r}${r.u}。</li>`).join('');
 </script>
