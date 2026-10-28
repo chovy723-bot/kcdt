@@ -10,7 +10,8 @@ from kcdt.compute import DOW30  # noqa: E402
 from kcdt.fetch import _nasdaq100, prices  # noqa: E402
 
 SECTOR9 = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"]  # all trade since 1998
-TICKERS = ["^GSPC", "^VIX", "^NDX", "^VXN", "QQQ", "SPY"] + SECTOR9 + DOW30
+EXTRA = ["HYG", "IEF", "LQD", "TLT", "^VIX3M", "IWM", "SMH", "^TNX", "^IRX"]  # candidate new indicators
+TICKERS = ["^GSPC", "^VIX", "^NDX", "^VXN", "QQQ", "SPY"] + SECTOR9 + DOW30 + EXTRA
 OUT = pathlib.Path(__file__).resolve().parent / "data"
 
 
