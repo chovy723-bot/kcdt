@@ -20,21 +20,33 @@ LISTS = {  # name -> Wikipedia page
 UA = {"User-Agent": "Mozilla/5.0 KCDT (github.com/chovy723-bot/kcdt)"}
 
 
+def _pick(cols, *keys):
+    for k in keys:
+        for name, orig in cols.items():
+            if name.startswith(k):
+                return orig
+    return None
+
+
 def _members(page):
     html = requests.get(WIKI + page, headers=UA, timeout=30).text
+    seen = []
     for t in pd.read_html(io.StringIO(html)):
-        cols = {str(c).strip(): c for c in t.columns}
-        sym = next((cols[k] for k in ("Symbol", "Ticker") if k in cols), None)
-        name = next((cols[k] for k in ("Security", "Company") if k in cols), None)
-        sec = next((cols[k] for k in cols if "Sector" in k), None)
+        if isinstance(t.columns, pd.MultiIndex):
+            t.columns = [" ".join(str(x) for x in c if "Unnamed" not in str(x)) for c in t.columns]
+        cols = {str(c).strip().lower(): c for c in t.columns}
+        sym = _pick(cols, "symbol", "ticker")
+        name = _pick(cols, "security", "company", "name")
+        sec = _pick(cols, "gics sector", "sector", "icb industry", "industry")
+        if len(t) >= 90:
+            seen.append(list(cols))
         if sym is not None and name is not None and len(t) >= 90:
-            out = pd.DataFrame({
+            return pd.DataFrame({
                 "s": t[sym].astype(str).str.strip().str.replace(".", "-", regex=False),
                 "n": t[name].astype(str),
                 "gics": t[sec].astype(str) if sec is not None else "",
             })
-            return out
-    raise RuntimeError(f"no member table found on {page}")
+    raise RuntimeError(f"no member table found on {page}; large tables had columns {seen}")
 
 
 def universe():
