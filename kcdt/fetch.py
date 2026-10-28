@@ -48,18 +48,48 @@ def _members(page):
                 return pd.DataFrame({
                     "s": t[sym].astype(str).str.strip().str.replace(".", "-", regex=False),
                     "n": t[name].astype(str),
-                    "gics": t[sec].astype(str) if sec is not None else "",
+                    "gics": t[sec].astype(str) if sec is not None else None,
                 })
             if len(t) >= 80:
                 seen.append(f"  columns {list(cols)}")
     raise RuntimeError(f"no member table found on {page}: " + " | ".join(seen))
 
 
-def universe():
+def _nasdaq100():
+    """Nasdaq's own list (Wikipedia's Nasdaq-100 page no longer carries the member table)."""
+    r = requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100",
+                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
+                     timeout=30)
+    rows = r.json()["data"]["data"]["rows"]
+    return pd.DataFrame({"s": [x["symbol"].strip().replace(".", "-") for x in rows],
+                         "n": [x["companyName"] for x in rows], "gics": None})
+
+
+def _list(key, page, cache):
+    """Fetch one member list; fall back to the last good copy so one bad source doesn't stop the update."""
+    path = cache / f"members-{key}.json"
+    tries = [_nasdaq100, lambda: _members(page)] if key == "ndx" else [lambda: _members(page)]
+    for f in tries:
+        try:
+            m = f()
+            if len(m) >= 80:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(m.to_json(orient="records"))
+                return m
+        except Exception as e:
+            print(f"{key}: source failed: {e}")
+    if path.exists():
+        print(f"{key}: using cached member list")
+        return pd.read_json(path, orient="records")
+    raise RuntimeError(f"no member list for {key}")
+
+
+def universe(cache="cache"):
     """One row per ticker: name, GICS sector and which lists it belongs to."""
     frames = []
     for key, page in LISTS.items():
-        m = _members(page)
+        m = _list(key, page, pathlib.Path(cache))
         m[key] = True
         frames.append(m)
         print(f"{key}: {len(m)} members")
@@ -68,6 +98,7 @@ def universe():
         **{k: lambda x: bool(x.fillna(False).any()) for k in LISTS}})
     for k in LISTS:
         u[k] = u[k].fillna(False).astype(bool)
+    u["gics"] = u["gics"].fillna("")
     return u
 
 
