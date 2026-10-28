@@ -1,0 +1,13 @@
+name: probe
+on:
+  push:
+    branches: [claude/probe]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          for t in NVDA AAPL; do echo "== nasdaq $t"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/company/$t/revenue?limit=1" | head -c 2500; echo; done
+          echo "== sec frame"; curl -s -m 60 -A "KCDT research kcdt-bot@users.noreply.github.com" https://data.sec.gov/api/xbrl/frames/us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax/USD/CY2025Q2.json -o f.json -w "%{http_code} %{size_download}\n"; head -c 600 f.json; echo
+          echo "== sec facts"; curl -s -m 60 -A "KCDT research kcdt-bot@users.noreply.github.com" https://data.sec.gov/api/xbrl/companyconcept/CIK0001045810/us-gaap/Revenues.json -w "\n%{http_code} %{size_download}\n" | tail -c 400
