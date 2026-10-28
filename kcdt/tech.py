@@ -55,3 +55,13 @@ def panic(ind):
     on = (ind["vix5"] >= PANIC_VIX5) & (ind["rv21"] >= PANIC_RV21)
     run = on.groupby((~on).cumsum()).cumsum()
     return {"on": bool(on.iloc[-1]), "day": int(run.iloc[-1])}
+
+
+def rebound(qqq):
+    """Rebound confirmation: QQQ closes above its 20-day line and that line is higher than 5 days ago.
+    qqq: daily closes. Returns {"on", "day" (consecutive days on), "ma20", "close"}."""
+    m20 = qqq.rolling(20).mean()
+    on = (qqq > m20) & (m20.diff(5) > 0)
+    run = on.groupby((~on).cumsum()).cumsum()
+    return {"on": bool(on.iloc[-1]), "day": int(run.iloc[-1]),
+            "ma20": round(float(m20.iloc[-1]), 2), "close": round(float(qqq.iloc[-1]), 2)}
