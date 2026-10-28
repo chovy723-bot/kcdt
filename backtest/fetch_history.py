@@ -7,10 +7,10 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from kcdt.compute import DOW30  # noqa: E402
-from kcdt.fetch import prices  # noqa: E402
+from kcdt.fetch import _nasdaq100, prices  # noqa: E402
 
 SECTOR9 = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"]  # all trade since 1998
-TICKERS = ["^GSPC", "^VIX", "^NDX", "QQQ", "SPY"] + SECTOR9 + DOW30
+TICKERS = ["^GSPC", "^VIX", "^NDX", "^VXN", "QQQ", "SPY"] + SECTOR9 + DOW30
 OUT = pathlib.Path(__file__).resolve().parent / "data"
 
 
@@ -22,7 +22,10 @@ def main():
         return yf_download(tickers, start="2003-01-01", **kw)
 
     yf.download = since_2003
-    px = prices(TICKERS, chunk=10)
+    ndx = sorted(_nasdaq100()["s"])  # today's Nasdaq-100 members
+    (OUT / "ndx_members.txt").parent.mkdir(exist_ok=True)
+    (OUT / "ndx_members.txt").write_text("\n".join(ndx) + "\n")
+    px = prices(sorted(set(TICKERS + ndx)), chunk=10)
     OUT.mkdir(exist_ok=True)
     for f in ("Close", "High"):
         df = px[f].sort_index()
