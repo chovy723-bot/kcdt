@@ -104,8 +104,10 @@ def fundamentals_row(f):
     # year-on-year growth of each of the latest 3 quarters; the weakest of the 3 is what a filter needs
     yoy3 = lambda xs: (min(g) if len(xs) >= 7 and None not in (g := [_growth(xs[i], xs[i + 4]) for i in range(3)])
                        else None)
-    epsh = f.get("epsh") or []
-    g3e = yoy3(epsh) if len(epsh) >= 7 else yoy3(epsq)
+    # Nasdaq's quarterly history goes back ~3 fiscal years; Yahoo's is the fallback
+    nrev, neps, epsh = f.get("nrev") or [], f.get("neps") or [], f.get("epsh") or []
+    g3r = yoy3(nrev) if len(nrev) >= 7 else yoy3(revq)
+    g3e = next((g for g in (yoy3(neps), yoy3(epsh), yoy3(epsq)) if g is not None), None)
     rising = lambda xs: len(xs) >= 3 and None not in xs[:3] and xs[0] > xs[1] > xs[2]
     efc, rfc = f.get("efc") or [None, None], f.get("rfc") or [None, None]
     pct = lambda x: None if x is None else x * 100
@@ -123,7 +125,7 @@ def fundamentals_row(f):
         sa=_f(_growth(reva[0], reva[1]) if len(reva) >= 2 else None, 1),
         pe=_f(f.get("pe"), 1), fpe=_f(f.get("fpe"), 1),
         rev3=up3(rev_seq), eps3=up3(eps_seq),
-        g3r=_f(yoy3(revq), 1), g3e=_f(g3e, 1),
+        g3r=_f(g3r, 1), g3e=_f(g3e, 1),
         yr=rising(reva) and rising(f.get("epsa") or []) if f.get("epsa") else None,
         e0=_f(pct(efc[0]), 1), e1=_f(pct(efc[1]), 1), r0=_f(pct(rfc[0]), 1), r1=_f(pct(rfc[1]), 1),
         ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"),

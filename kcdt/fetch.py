@@ -2,7 +2,9 @@
 import io
 import json
 import pathlib
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
@@ -226,6 +228,73 @@ def fundamentals(tickers, cache_file, max_age_days=7, max_calls=250, pause=0.6):
             time.sleep(pause * 10)
         time.sleep(pause)
     print(f"fundamentals: {done} refreshed, {len(stale) - done} still stale, {len(cache)} cached")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cache))
+    return cache
+
+
+# ---- quarterly revenue / EPS history from Nasdaq (Yahoo only gives ~5 quarters, too few for 3 quarters YoY) ----
+
+def _money(x):
+    """'$44,062(m)' -> 44062e6, '$0.76 (04/27/2025)' -> 0.76, '' -> None."""
+    m = re.match(r"\s*(-?)\$?(-?)([\d,]*\.?\d+)\s*(\((m|b|k)\))?", x or "")
+    if not m:
+        return None
+    v = float(m.group(3).replace(",", "")) * {"m": 1e6, "b": 1e9, "k": 1e3}.get(m.group(5), 1)
+    return -v if (m.group(1) or m.group(2)) else v
+
+
+def _nasdaq_quarters(t):
+    r = requests.get(f"https://api.nasdaq.com/api/company/{t.replace('-', '.')}/revenue?limit=1",
+                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
+                     timeout=30)
+    rows = ((r.json().get("data") or {}).get("revenueTable") or {}).get("rows") or []
+    cols = ["value2", "value3", "value4"]  # fiscal years, newest first
+    quarters, cur = [], None
+    for row in rows:
+        label = row.get("value1", "")
+        if label == "Totals":
+            break
+        if label == "Revenue" and cur is not None:
+            cur["rev"] = [_money(row.get(c)) for c in cols]
+        elif label == "EPS" and cur is not None:
+            cur["eps"] = [_money(row.get(c)) for c in cols]
+        elif label not in ("Revenue", "EPS", "Dividends"):
+            cur = {"rev": [None] * 3, "eps": [None] * 3}
+            quarters.append(cur)
+    # newest first: latest fiscal year's quarters in reverse order, then the year before, ...
+    seq = [(q["rev"][i], q["eps"][i]) for i in range(3) for q in reversed(quarters)]
+    while seq and seq[0][0] is None:  # quarters of the current year not reported yet
+        seq.pop(0)
+    out = []
+    for rev, eps in seq:  # keep only the unbroken run
+        if rev is None:
+            break
+        out.append((rev, eps))
+    return {"nrev": [x[0] for x in out], "neps": [x[1] for x in out]}
+
+
+def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=4):
+    path = pathlib.Path(cache_file)
+    cache = json.loads(path.read_text()) if path.exists() else {}
+    now = time.time()
+    stale = sorted((t for t in tickers if now - cache.get(t, {}).get("_ts", 0) > max_age_days * 86400),
+                   key=lambda t: cache.get(t, {}).get("_ts", 0))[:max_calls]
+
+    def one(t):
+        try:
+            rec = _nasdaq_quarters(t)
+            rec["_ts"] = now
+            return t, rec
+        except Exception as e:
+            print("nasdaq quarters failed:", t, e)
+            return t, None
+
+    with ThreadPoolExecutor(workers) as ex:
+        got = [(t, rec) for t, rec in ex.map(one, stale) if rec is not None]
+    cache.update(got)
+    print(f"nasdaq quarters: {len(got)}/{len(stale)} refreshed, {len(cache)} cached")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache))
     return cache

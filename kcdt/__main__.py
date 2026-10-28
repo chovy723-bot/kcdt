@@ -4,7 +4,7 @@ import pathlib
 import sys
 
 from .compute import build, stock_pages, wants_fundamentals
-from .fetch import fear_greed, fetch_prices, fundamentals, universe
+from .fetch import fear_greed, fetch_prices, fundamentals, nasdaq_quarters, universe
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "site"
@@ -30,7 +30,10 @@ def write_stock_pages(pages):
 def main():
     meta = universe()
     px = fetch_prices(meta)
-    fund = fundamentals(wants_fundamentals(px, meta), ROOT / "cache" / "fundamentals.json")
+    want = wants_fundamentals(px, meta)
+    fund = fundamentals(want, ROOT / "cache" / "fundamentals.json")
+    nq = nasdaq_quarters(want, ROOT / "cache" / "nasdaq_quarters.json")
+    fund = {t: {**rec, **nq.get(t, {})} for t, rec in fund.items()}
     data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"))
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
