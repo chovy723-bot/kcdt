@@ -130,7 +130,7 @@ def prices(tickers, period="2y", chunk=50, pause=3):
             missing += [t for t in part if t not in got]
             time.sleep(pause)
         print(f"attempt {attempt + 1}: {len(tickers) - len(missing)}/{len(tickers)} downloaded")
-        if not missing:
+        if len(missing) <= max(3, len(tickers) // 200):  # a few delisted symbols: not worth minutes of retries
             break
         todo = missing
         time.sleep(60 * (attempt + 1))
