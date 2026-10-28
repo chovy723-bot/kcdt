@@ -230,6 +230,29 @@ def main():
             print(e.to_string())
             res.setdefault("episodes", {})[f"{label}_{tk}"] = e.to_dict("records")
 
+    # threshold variants: exposure 100% / 50% / 0% in 健康 / 警戒 / 危險 (zones 5 / 10)
+    def mod(**kw):
+        return [(k, n, *kw.get(k, (y, r)), s, u) for k, n, y, r, s, u in RULES]
+    variants = {"A current": RULES, "B ma50_200 1/-3": mod(ma50_200=(1, -3)),
+                "C B + spx52 -5/-15": mod(ma50_200=(1, -3), spx52=(-5, -15)),
+                "D calibrated": [(k, n, -7, -15, sd, u) if k == "spx52" else (k, n, y, r, sd, u)
+                                 for k, n, y, r, sd, u in rules_new]}  # spx52 red rounded to -15
+    print("\n===== threshold variants, QQQ, exposure by zone =====")
+    fq = fw["QQQ"]
+    for name, rules in variants.items():
+        sc, _ = score(ind, rules)
+        fd = fq.reindex(sc.index).dropna()
+        s2 = sc.reindex(fd.index)
+        line = f"{name:20}"
+        for lab, sl in (("all", slice(None, None)), ("test", slice(SPLIT, None))):
+            s = sc.loc[sl]
+            pos = pd.Series(np.where(s >= 10, 0, np.where(s >= 5, 0.5, 1.0)), index=s.index).shift(1).fillna(1)
+            eq = (1 + close["QQQ"].pct_change().reindex(pos.index).fillna(0) * pos).cumprod()
+            line += f" | {lab} cagr {(eq.iloc[-1] ** (252 / len(eq)) - 1) * 100:5.1f} maxdd {(eq / eq.cummax() - 1).min() * 100:6.1f}"
+        line += (f" | >=10 dd10 {(fd.dd63[s2 >= 10] <= -10).mean() * 100:4.1f}"
+                 f" | 0-4 dd10 {(fd.dd63[s2 < 5] <= -10).mean() * 100:4.1f}")
+        print(line)
+
     (out / "results.json").write_text(json.dumps(res, ensure_ascii=False, default=str, indent=1))
 
 
