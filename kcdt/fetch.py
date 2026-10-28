@@ -77,7 +77,7 @@ NASDAQ_SECTOR = {
 SKIP_NAMES = ("Warrant", "Preferred", " Unit", "Rights", "Notes", "Depositary Shares Each")
 
 
-def _all_us(min_cap=3e8, min_price=20):
+def _all_us(min_cap=3e8, min_price=12):
     """Every US-listed common stock from Nasdaq's screener, above KC's cap and price floor."""
     r = requests.get("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&download=true",
                      headers=NASDAQ_UA, timeout=60)

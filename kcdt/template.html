@@ -264,7 +264,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
         <p class="muted small" id="heatnote" style="margin-top:6px"></p></div>
     </section>
     <section aria-labelledby="h-sig">
-      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：全美股（市值 3 億、股價 20 美元以上）加指數成份股。撳代號睇圖。</span></div>
+      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：全美股（市值 3 億、股價 12 美元以上）加指數成份股。撳代號睇圖。</span></div>
       <div class="cols2">
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
@@ -372,7 +372,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   </main>
 
   <footer>
-    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻為原型設定，未經回測驗證。</p>
+    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。溫度門檻已用 2004 年至今嘅數據回測；分數係風險參考，唔係買賣訊號。</p>
     <p>每個交易日美股收市後自動更新（約香港時間早上 7 點）。數據來源：Yahoo Finance、Nasdaq、Wikipedia。</p>
   </footer>
 </div>
@@ -490,7 +490,7 @@ DRAW.market = () => {
     const b=D.breadth[which], n=b.n||1, pc=x=>(x/n*100).toFixed(1);
     const rows=[['升','跌',b.adv,b.dec],['新高','新低',b.nh,b.nl],['50 日線上','下',b.a50,n-b.a50],['200 日線上','下',b.a200,n-b.a200]];
     $('bars').innerHTML = rows.map(([la,lb,a,c])=>{const tot=(a+c)||1;return `<div class="panel bb"><div class="lab"><span class="up"><b>${la}</b> <span class="num">${pc(a)}% (${a})</span></span><span class="down"><span class="num">(${c}) ${pc(c)}%</span> <b>${lb}</b></span></div><div class="track" role="img" aria-label="${la} ${a}，${lb} ${c}"><i style="width:${a/tot*100}%;background:var(--up)"></i><i style="width:${c/tot*100}%;background:var(--down)"></i></div></div>`}).join('');
-    $('bnote').textContent = {ndx:`Nasdaq-100 ${b.n} 隻`, all:`${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600）`, usa:`全美股 ${b.n} 隻（市值 3 億、股價 20 美元以上，加埋指數成份股）`}[which];
+    $('bnote').textContent = {ndx:`Nasdaq-100 ${b.n} 隻`, all:`${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600）`, usa:`全美股 ${b.n} 隻（市值 3 億、股價 12 美元以上，加埋指數成份股）`}[which];
   };
   $('b-alln').textContent = D.breadth.all.n.toLocaleString('en-US');
   const BB=['b-ndx','b-all','b-usa'];
