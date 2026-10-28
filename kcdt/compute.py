@@ -85,6 +85,10 @@ def stock_table(close, high, universe):
 def build(close, high, universe, sp500_names=None):
     """close/high: DataFrames with every ticker needed. universe: S&P 500 tickers."""
     close, high = close.sort_index(), high.sort_index()
+    # Keep only completed S&P sessions; Yahoo can add a partial row for today
+    # (e.g. VIX trades before the cash open), which would leave every stock NaN.
+    days = close["^GSPC"].dropna().index
+    close, high = close.loc[days].ffill(limit=3), high.loc[days].ffill(limit=3)
     ind = indicator_frame(close, high, close["^VIX"]).dropna().tail(HIST_DAYS)
     stocks, px, ma50, ma200 = stock_table(close, high, universe)
     above50 = (px > ma50).where(ma50.notna()).mean(axis=1) * 100

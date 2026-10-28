@@ -19,6 +19,10 @@ def test_build():
     universe = [f"S{i:03d}" for i in range(500)] + DOW30[:5]
     tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS]))
     close, high = fake_prices(tickers)
+    # a partial "today" row where only VIX has traded
+    extra = pd.Timestamp("2026-10-28")
+    close.loc[extra] = np.nan; high.loc[extra] = np.nan
+    close.loc[extra, "^VIX"] = 16.0
     d = build(close, high, universe)
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 505
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
