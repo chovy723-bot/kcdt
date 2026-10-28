@@ -49,7 +49,7 @@ def fake_fund(tickers, seed=2):
 
 def test_build():
     universe = [f"S{i:04d}" for i in range(1100)] + DOW30[:5]
-    tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS] + ["^NDX", "^VXN"]))
+    tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS] + ["^NDX", "^VXN", "QQQ"]))
     px = fake_prices(tickers)
     # a partial "today" row where only VIX has traded
     extra = pd.Timestamp("2026-10-28")
@@ -77,6 +77,7 @@ def test_build():
     assert s1["edate"] == "2026-10-29" and s1["etime"] == "amc"
     assert len(d["tech"]["hist"]) == 60 and 0 <= d["tech"]["hist"][-1]["score"] <= 16
     assert set(d["panic"]) == {"on", "day"}
+    assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
     assert len(pages) == 1105 and len(nv["d"]) == 260 and nv["d"][-1] == "2026-10-27"

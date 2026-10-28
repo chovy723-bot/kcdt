@@ -93,6 +93,9 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .temp1 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .panic{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 8%,var(--panel));border-radius:12px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
 .panic b{color:var(--hot);font-size:16px}
+.rebound{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;font-size:13px;display:grid;gap:4px}
+.rebound .tag{display:inline-block;padding:1px 8px;border-radius:9px;font-weight:600;color:#fff;background:var(--flat)}
+.rebound .tag.on{background:var(--up)}
 .score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
 .zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
 .scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
@@ -465,7 +468,9 @@ DRAW.market = () => {
       <div class="score"><b class="num">${last.score}</b><span>/ 16</span></div>
       <div class="scale"><i style="left:${last.score/16*100}%"></i></div>
       <p class="muted small">前一日 ${prev.score} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
-    '<div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>';
+    '<div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>' +
+    (D.rebound ? `<div class="rebound"><div><span class="eyebrow">反彈確認 · QQQ</span> <span class="tag${D.rebound.on?' on':''}">${D.rebound.on?`是（第 ${D.rebound.day} 日）`:'否'}</span> <span class="muted small num">收市 ${D.rebound.close} · 20 日線 ${D.rebound.ma20}</span></div>
+      <p class="muted small">QQQ 企喺向上嘅 20 日線之上。回測（2004–2026）：分數仍然喺警戒/危險區時，用佢做「最少揸一半」嘅參考，2016 年後每年回報 13.7%→15.0%、最大跌幅 -21.4%→-18.9%。但唔好一亮就全倉：2008 年熊市幾次假反彈，咁做最大跌幅會去到 -40%。只供參考，唔係買賣建議。</p></div>` : '');
   if(D.panic && D.panic.on){$('panic').hidden=false;$('panic').innerHTML=`<b>恐慌區（第 ${D.panic.day} 日）</b><span>VIX 同波幅雙紅燈。2004 年至今共 522 日，之後 3 個月 QQQ 平均 +9%，79% 時間上升；但恐慌頭 3 日之後仍有 36% 機會再跌 10%。只供參考，唔係買賣建議。</span>`}
   let tsel='spx';
   const tbtn=()=>document.querySelectorAll('.tsel').forEach(box=>{box.innerHTML=Object.entries(T).map(([k,t])=>`<button class="tog" data-t="${k}" aria-pressed="${k===tsel}">${t.n}</button>`).join('');

@@ -243,6 +243,7 @@ def build(px, meta, fund=None, fng=None, earn=None):
     return dict(
         asof=days[-1].strftime("%Y-%m-%d"),
         hist=hist, tech=tech(close, high, meta), panic=_panic(indicator_frame(close, high, close["^VIX"]).dropna()),
+        rebound=_rebound(close["QQQ"].dropna()) if "QQQ" in close else None,
         stocks=stocks, idx=idx, sectors=sectors, minis=minis,
         breadth=dict(usa=breadth(stocks), all=breadth([s for s in stocks if s["idx"]]),
                      ndx=breadth([s for s in stocks if s["ndx"]])),
@@ -255,6 +256,11 @@ def build(px, meta, fund=None, fng=None, earn=None):
 def _panic(ind):
     from .tech import panic
     return panic(ind)
+
+
+def _rebound(qqq):
+    from .tech import rebound
+    return rebound(qqq) if len(qqq) >= 25 else None
 
 
 def tech(close, high, meta):
