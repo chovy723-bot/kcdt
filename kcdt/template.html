@@ -155,6 +155,28 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .rs{font-family:var(--f-data);font-weight:600;padding:1px 7px;border-radius:5px;background:var(--soft)}
 .yes{color:var(--up);font-weight:700}
 
+/* journal */
+.jform form{display:grid;gap:12px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px 14px}
+.jgrid.wide{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.jgrid label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
+.jgrid input,.jgrid textarea{font:inherit;font-size:14px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0}
+.jshots{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.jshots #j-shots{display:flex;gap:8px}
+.thumb{position:relative}
+.thumb img,#jbody img{height:44px;border-radius:4px;border:1px solid var(--line);cursor:zoom-in;display:block}
+.thumb button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:var(--hot);color:#fff;cursor:pointer;line-height:20px;padding:0}
+#jbody td{white-space:nowrap}
+#jbody tr{cursor:pointer}
+#jbody tr.grp{cursor:default}
+#jbody tr.grp td{background:var(--soft);font-weight:600;font-size:13px}
+#jbody tr:hover td{background:var(--soft)}
+#jbody td.txt{max-width:0}
+#jbody .open td.pl{font-style:italic}
+#j-img{border:0;border-radius:10px;padding:10px;background:var(--panel);max-width:96vw}
+#j-img img{max-width:92vw;max-height:80vh;display:block;margin-bottom:8px}
+#j-img::backdrop{background:rgb(0 0 0 / .6)}
+
 /* earnings */
 .eday{display:grid;gap:6px}
 .eday h3{display:flex;gap:10px;align-items:baseline}
@@ -198,6 +220,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <a href="#screener" data-v="screener">選股器</a>
     <a href="#earnings" data-v="earnings">業績日曆</a>
     <a href="#news" data-v="news">經濟及新聞</a>
+    <a href="#journal" data-v="journal">交易日誌</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
   </nav>
 
@@ -361,6 +384,50 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <p class="note">經濟數據同新聞嚟自 Nasdaq，每日早上更新一次，唔係即時。數據公佈前「實際」一欄會留空。</p>
   </main>
 
+  <!-- ===== 交易日誌 ===== -->
+  <main class="view" id="v-journal" hidden>
+    <section aria-labelledby="h-jn">
+      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="muted small" id="j-where">暫時儲喺呢部機嘅瀏覽器</span></div>
+      <div class="stats" id="j-stats"></div>
+    </section>
+    <section class="panel jform" aria-labelledby="h-jf">
+      <div class="sechead"><h3 id="h-jf">新增交易</h3><button class="tog" id="j-new" type="button">清空</button></div>
+      <form id="jf" autocomplete="off">
+        <div class="jgrid">
+          <label>股票代號<input name="sym" required list="tickers" style="text-transform:uppercase"></label>
+          <label>開倉日期<input name="open" type="date" required></label>
+          <label>平倉日期<input name="close" type="date"></label>
+          <label>股數<input name="qty" type="number" step="any" min="0" required></label>
+          <label>買入價（USD）<input name="buy" type="number" step="any" min="0" required></label>
+          <label>賣出價（USD）<input name="sell" type="number" step="any" min="0"></label>
+          <label>手續費（USD）<input name="fee" type="number" step="any" min="0" value="0"></label>
+          <label>策略類型<input name="strat" list="j-strats"></label>
+          <label>預計止盈<input name="tp" type="number" step="any" min="0"></label>
+          <label>預計止損<input name="sl" type="number" step="any" min="0"></label>
+          <label>交易情緒<input name="mood" list="j-moods"></label>
+        </div>
+        <div class="jgrid wide">
+          <label>買入理由<textarea name="why_in" rows="3"></textarea></label>
+          <label>賣出理由<textarea name="why_out" rows="3"></textarea></label>
+          <label>復盤筆記（做對／做錯）<textarea name="review" rows="3"></textarea></label>
+        </div>
+        <div class="jshots"><span class="muted small">交易截圖（最多 2 張，會自動壓細）</span><div id="j-shots"></div>
+          <label class="tog" style="display:inline-block">加截圖<input type="file" id="j-file" accept="image/*" hidden></label></div>
+        <div class="cfbar"><button class="tog" type="submit" aria-pressed="true" id="j-save">儲存交易</button><button class="tog" type="button" id="j-del" hidden>刪除呢單交易</button><span class="muted small" id="j-msg"></span></div>
+      </form>
+      <datalist id="j-strats"><option>趨勢跟隨</option><option>突破</option><option>回調買入</option><option>反彈</option><option>業績</option></datalist>
+      <datalist id="j-moods"><option>冷靜理性</option><option>恐懼割肉</option><option>FOMO 追高</option><option>貪心</option><option>報復性交易</option></datalist>
+    </section>
+    <section aria-labelledby="h-jl">
+      <div class="sechead"><h2 id="h-jl">交易紀錄</h2><div class="controls"><button class="tog" id="j-csv">匯出 CSV（Excel 用）</button></div></div>
+      <div class="panel tablewrap"><table id="jtable">
+        <thead><tr><th>代號</th><th>開倉</th><th>平倉</th><th class="r">買入價</th><th class="r">賣出價</th><th class="r">股數</th><th class="r">手續費</th><th class="r">買入成本</th><th class="r">賣出收入</th><th class="r">淨盈虧</th><th class="r">淨盈虧 %</th><th class="r">持倉日</th><th>策略</th><th class="r">止盈</th><th class="r">止損</th><th>情緒</th><th class="r">累計盈虧</th><th>截圖</th></tr></thead>
+        <tbody id="jbody"></tbody></table></div>
+      <p class="note">撳一行就可以改。未平倉嘅交易用最新收市價計浮動盈虧（斜體）。只係你自己嘅紀錄，唔係投資建議。</p>
+    </section>
+    <dialog id="j-img"><img alt="交易截圖"><form method="dialog"><button class="tog">關閉</button></form></dialog>
+  </main>
+
   <!-- ===== 個股 ===== -->
   <main class="view" id="v-stock" hidden>
     <div class="shead">
@@ -444,7 +511,7 @@ $('q').oninput = e => { $('q').setCustomValidity(''); if((!e.inputType || e.inpu
 const drawn = {};
 function route(){
   const h = decodeURIComponent(location.hash.slice(1)) || 'market';
-  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings','news'].includes(h)?h:'market');
+  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings','news','journal'].includes(h)?h:'market');
   if(v==='stock' && !BY[h.slice(2)]) v='market';
   document.querySelectorAll('.view').forEach(x=>x.hidden = x.id!=='v-'+v);
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
@@ -817,6 +884,84 @@ DRAW.news = () => {
   const N=D.news||[];
   $('news').innerHTML = N.map(n=>`<li><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,'&lt;')}</a><span class="muted small">${n.t?hkt(n.t):''} · ${n.src.replace(/</g,'&lt;')}</span></li>`).join('') || '<li class="muted">今次拎唔到新聞。</li>';
   $('newsnote').textContent = N.length?`${N.length} 條 · 截至更新時間`:'';
+};
+
+// ---------- 交易日誌 ----------
+// DB: the browser copy for now; the Gmail-login build swaps in the cloud store with the same calls.
+const LocalDB = {
+  where: '暫時儲喺呢部機嘅瀏覽器',
+  async all(col){return Store.get(col,[])},
+  async put(col,rec){const a=Store.get(col,[]), i=a.findIndex(x=>x.id===rec.id); i<0?a.push(rec):a[i]=rec; Store.set(col,a); if(JSON.stringify(Store.get(col,[]))!==JSON.stringify(a)) throw new Error('full')},
+  async del(col,id){Store.set(col,Store.get(col,[]).filter(x=>x.id!==id))}};
+let DB = LocalDB, TR = [], jEdit = null, jShots = [];
+const num = v => v===''||v==null?null:+v;
+const days = (a,b) => Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+function calc(t){
+  const live = t.sell==null && BY[t.sym] ? BY[t.sym].c : null, out = t.sell ?? live;
+  const cost = t.buy*t.qty, rev = out==null?null:out*t.qty, fee = t.fee||0;
+  const pl = rev==null?null:rev-cost-fee;
+  return {...t, cost, rev, pl, plp: pl==null?null:pl/cost*100, isOpen: t.sell==null,
+    hold: days(t.open, t.close || ymd(nyNow())),
+    tpp: t.tp?(t.tp/t.buy-1)*100:null, slp: t.sl?(t.sl/t.buy-1)*100:null};
+}
+const usd = (x,d=2) => x==null?'—':(x<0?'-':'')+'$'+f(Math.abs(x),d);
+const MON = '一二三四五六七八九十'.split('').concat(['十一','十二']);
+function jRender(){
+  const rows = TR.map(calc).sort((a,b)=>(a.open+(a.close||'')).localeCompare(b.open+(b.close||'')));
+  let cum = 0, month = '';
+  $('jbody').innerHTML = rows.map(t=>{ if(!t.isOpen && t.pl!=null) cum += t.pl;
+    const m = t.open.slice(0,7), head = m!==month ? `<tr class="grp"><td colspan="18">${m.slice(0,4)} 年${MON[+m.slice(5)-1]}月</td></tr>` : ''; month = m;
+    return head + `<tr data-id="${t.id}" class="${t.isOpen?'open':''}"><td><b>${esc(t.sym)}</b></td><td class="num small">${t.open}</td><td class="num small">${t.close||'<span class="muted">未平倉</span>'}</td>
+      <td class="r num">${usd(t.buy)}</td><td class="r num">${t.sell!=null?usd(t.sell):'<span class="muted">'+usd(BY[t.sym]?.c)+'</span>'}</td><td class="r num">${f(t.qty,0)}</td><td class="r num">${usd(t.fee||0)}</td>
+      <td class="r num">${usd(t.cost)}</td><td class="r num">${usd(t.rev)}</td><td class="r num pl ${cls(t.pl)}">${usd(t.pl)}</td><td class="r num pl ${cls(t.plp)}">${t.plp==null?'—':sgn(t.plp,2)+'%'}</td>
+      <td class="r num"><b>${t.hold}</b></td><td class="small">${esc(t.strat||'')}</td>
+      <td class="r num small">${t.tp?usd(t.tp)+` <span class="up">${sgn(t.tpp,1)}%</span>`:'—'}</td><td class="r num small">${t.sl?usd(t.sl)+` <span class="down">${sgn(t.slp,1)}%</span>`:'—'}</td>
+      <td class="small">${esc(t.mood||'')}</td><td class="r num ${cls(cum)}">${t.isOpen?'':usd(cum)}</td>
+      <td><div style="display:flex;gap:4px">${(t.shots||[]).map((s,i)=>`<img src="${s}" alt="截圖 ${i+1}" data-big="1">`).join('')}</div></td></tr>`}).join('') || '<tr><td colspan="18" class="muted">未有紀錄。喺上面填一單交易就得。</td></tr>';
+  $('jbody').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{ if(e.target.dataset.big){jZoom(e.target.src);return} jLoad(tr.dataset.id)});
+  const done = rows.filter(t=>!t.isOpen && t.pl!=null), win = done.filter(t=>t.pl>0), loss = done.filter(t=>t.pl<0);
+  const avg = a => a.length ? a.reduce((s,t)=>s+t.pl,0)/a.length : null, aw=avg(win), al=avg(loss);
+  $('j-stats').innerHTML = [
+    stat('已平倉', `${done.length} 單`), stat('勝率', done.length?f(win.length/done.length*100,0)+'%':'—'),
+    stat('累計盈虧', `<span class="${cls(cum)}">${usd(cum)}</span>`), stat('平均賺', `<span class="up">${usd(aw)}</span>`),
+    stat('平均蝕', `<span class="down">${usd(al)}</span>`), stat('盈虧比', aw!=null&&al?f(aw/-al,2):'—'),
+    stat('平均持倉', done.length?f(done.reduce((s,t)=>s+t.hold,0)/done.length,0)+' 日':'—'), stat('未平倉', `${rows.length-done.length} 單`)].join('');
+}
+function jZoom(src){const d=$('j-img'); d.querySelector('img').src=src; d.showModal()}
+function jShotsDraw(){ $('j-shots').innerHTML = jShots.map((s,i)=>`<span class="thumb"><img src="${s}" alt="截圖 ${i+1}"><button type="button" data-i="${i}" aria-label="刪除截圖 ${i+1}">×</button></span>`).join('');
+  $('j-shots').querySelectorAll('img').forEach(im=>im.onclick=()=>jZoom(im.src));
+  $('j-shots').querySelectorAll('button').forEach(b=>b.onclick=()=>{jShots.splice(+b.dataset.i,1); jShotsDraw()}); }
+function shrink(file, max=1400, q=.72){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
+  c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg',q)) }; img.onerror=bad; img.src=URL.createObjectURL(file) }) }
+function jMsg(t){$('j-msg').textContent=t; clearTimeout(jMsg.t); jMsg.t=setTimeout(()=>$('j-msg').textContent='',4000)}
+function jLoad(id){ const t = TR.find(x=>x.id===id), F=$('jf'); if(!t) return; jEdit=id;
+  for(const el of F.elements) if(el.name) el.value = t[el.name] ?? '';
+  jShots=[...(t.shots||[])]; jShotsDraw(); $('h-jf').textContent='修改交易：'+t.sym; $('j-del').hidden=false; $('j-save').textContent='儲存修改';
+  $('h-jf').scrollIntoView({behavior:'smooth',block:'start'}) }
+function jReset(){ jEdit=null; jShots=[]; $('jf').reset(); $('jf').elements.open.value=ymd(nyNow()); jShotsDraw();
+  $('h-jf').textContent='新增交易'; $('j-del').hidden=true; $('j-save').textContent='儲存交易' }
+async function jReload(){ TR = await DB.all('trades'); $('j-where').textContent = DB.where; jRender() }
+DRAW.journal = () => {
+  if(!DRAW.journal.done){ DRAW.journal.done=1;
+    $('j-new').onclick=jReset;
+    $('j-file').onchange=async e=>{ const fl=e.target.files[0]; e.target.value=''; if(!fl) return;
+      if(jShots.length>=2){jMsg('最多 2 張截圖');return} try{ jShots.push(await shrink(fl)); jShotsDraw() }catch(_){ jMsg('呢個檔案打唔開') } };
+    $('jf').onsubmit=async e=>{ e.preventDefault(); const F=e.target.elements;
+      const t={ id: jEdit || Date.now().toString(36)+Math.random().toString(36).slice(2,6), sym:F.sym.value.trim().toUpperCase(), open:F.open.value, close:F.close.value||null,
+        buy:num(F.buy.value), sell:num(F.sell.value), qty:num(F.qty.value), fee:num(F.fee.value)||0, tp:num(F.tp.value), sl:num(F.sl.value),
+        strat:F.strat.value.trim(), mood:F.mood.value.trim(), why_in:F.why_in.value, why_out:F.why_out.value, review:F.review.value, shots:jShots };
+      if((t.close==null)!==(t.sell==null)){ jMsg('平倉日期同賣出價要一齊填（或者一齊留空 = 未平倉）'); return }
+      if(t.close && t.close<t.open){ jMsg('平倉日期早過開倉日期'); return }
+      try{ await DB.put('trades', t) }catch(_){ jMsg('儲唔到：瀏覽器空間滿咗，試下刪走啲截圖'); return }
+      await jReload(); jReset(); jMsg('已儲存') };
+    $('j-del').onclick=async()=>{ if(!jEdit) return; await DB.del('trades', jEdit); await jReload(); jReset(); jMsg('已刪除') };
+    $('j-csv').onclick=()=>{ const H=['股票代號','開倉日期','平倉日期','買入價','賣出價','股數','手續費','買入成本','賣出收入','淨盈虧','淨盈虧%','持倉天數','策略類型','預計止盈','預計止盈%','預計止損','預計止損%','買入理由','賣出理由','復盤筆記','交易情緒'];
+      const q=v=>v==null?'':/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v), r2=x=>x==null?null:Math.round(x*100)/100;
+      const lines=[H, ...TR.map(calc).sort((a,b)=>a.open.localeCompare(b.open)).map(t=>[t.sym,t.open,t.close,t.buy,t.sell,t.qty,t.fee,r2(t.cost),t.isOpen?null:r2(t.rev),t.isOpen?null:r2(t.pl),t.isOpen?null:r2(t.plp),t.hold,t.strat,t.tp,r2(t.tpp),t.sl,r2(t.slp),t.why_in,t.why_out,t.review,t.mood])].map(r=>r.map(q).join(','));
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'})); a.download=`kcdt-journal-${ymd(nyNow())}.csv`; a.click(); };
+    jReset();
+  }
+  jReload();
 };
 
 // ---------- 個股 ----------
