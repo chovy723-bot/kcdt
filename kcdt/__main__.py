@@ -3,8 +3,8 @@ import json
 import pathlib
 import sys
 
-from .compute import build, wants_fundamentals
-from .fetch import fetch_prices, fundamentals, universe
+from .compute import build, stock_pages, wants_fundamentals
+from .fetch import fear_greed, fetch_prices, fundamentals, universe
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "site"
@@ -20,16 +20,24 @@ def render(data):
     return head + body + "</body></html>"
 
 
+def write_stock_pages(pages):
+    folder = OUT / "s"
+    folder.mkdir(parents=True, exist_ok=True)
+    for t, page in pages.items():
+        (folder / f"{t}.json").write_text(json.dumps(page, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def main():
     meta = universe()
     px = fetch_prices(meta)
     fund = fundamentals(wants_fundamentals(px, meta), ROOT / "cache" / "fundamentals.json")
-    data = build(px, meta, fund)
+    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"))
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
     OUT.mkdir(exist_ok=True)
     (OUT / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     (OUT / "index.html").write_text(render(data), encoding="utf-8")
+    write_stock_pages(stock_pages(px, data["stocks"]))
     print(f"built {data['asof']}: score {data['hist'][-1]['score']}, "
           f"{len(data['stocks'])} stocks, {data['nfund']} with fundamentals")
 

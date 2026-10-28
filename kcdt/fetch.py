@@ -160,29 +160,56 @@ def _row_values(df, names):
     return []
 
 
+SCHEMA = 2  # bump when _one() starts collecting new fields, so old cache entries refresh first
+
+
+def _estimate_growth(df):
+    """Analyst growth estimates for this and next fiscal year, as fractions."""
+    if df is None or df.empty or "growth" not in df:
+        return None, None
+    g = df["growth"]
+    val = lambda k: None if k not in g.index or pd.isna(g[k]) else float(g[k])
+    return val("0y"), val("+1y")
+
+
 def _one(t):
     tk = yf.Ticker(t)
     info = tk.info or {}
     rec = {v: info.get(k) for k, v in INFO_KEYS.items()}
+    rec["_v"] = SCHEMA
     q = tk.quarterly_income_stmt
     if q is not None and not q.empty:
         q = q[sorted(q.columns, reverse=True)]  # newest first
-        rec["revq"] = _row_values(q, ["Total Revenue", "Operating Revenue"])[:6]
-        rec["epsq"] = _row_values(q, ["Diluted EPS", "Basic EPS"])[:6]
+        rec["revq"] = _row_values(q, ["Total Revenue", "Operating Revenue"])[:8]
+        rec["epsq"] = _row_values(q, ["Diluted EPS", "Basic EPS"])[:8]
     a = tk.income_stmt
     if a is not None and not a.empty:
         a = a[sorted(a.columns, reverse=True)]
-        rec["reva"] = _row_values(a, ["Total Revenue", "Operating Revenue"])[:3]
+        rec["reva"] = _row_values(a, ["Total Revenue", "Operating Revenue"])[:4]
+        rec["epsa"] = _row_values(a, ["Diluted EPS", "Basic EPS"])[:4]
+    # Reported EPS goes back further here than in the income statement (needed for 3 quarters year on year)
+    try:
+        e = tk.get_earnings_dates(limit=16)
+        if e is not None and not e.empty and "Reported EPS" in e:
+            e = e["Reported EPS"].dropna().sort_index(ascending=False)
+            rec["epsh"] = [float(x) for x in e.tolist()[:8]]
+    except Exception as ex:
+        print("earnings dates failed:", t, ex)
+    for name, key in (("earnings_estimate", "efc"), ("revenue_estimate", "rfc")):
+        try:
+            rec[key] = list(_estimate_growth(getattr(tk, name)))
+        except Exception as ex:
+            print(f"{name} failed:", t, ex)
     return rec
 
 
-def fundamentals(tickers, cache_file, max_age_days=7, max_calls=350, pause=0.6):
-    """Refresh stale entries for `tickers` (oldest first), keep the rest from the cache."""
+def fundamentals(tickers, cache_file, max_age_days=7, max_calls=250, pause=0.6):
+    """Refresh stale entries for `tickers` (old schema first, then oldest), keep the rest from the cache."""
     path = pathlib.Path(cache_file)
     cache = json.loads(path.read_text()) if path.exists() else {}
     now = time.time()
-    stale = sorted((t for t in tickers if now - cache.get(t, {}).get("_ts", 0) > max_age_days * 86400),
-                   key=lambda t: cache.get(t, {}).get("_ts", 0))
+    age = lambda t: (cache.get(t, {}).get("_v", 1) >= SCHEMA, cache.get(t, {}).get("_ts", 0))
+    stale = sorted((t for t in tickers if age(t)[0] is False or now - age(t)[1] > max_age_days * 86400), key=age)
     done = fails = 0
     for t in stale[:max_calls]:
         try:
@@ -202,6 +229,42 @@ def fundamentals(tickers, cache_file, max_age_days=7, max_calls=350, pause=0.6):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache))
     return cache
+
+
+# ---- CNN Fear & Greed (no official API; keep the last good copy if it fails) ----
+
+def fear_greed(cache_file):
+    path = pathlib.Path(cache_file)
+    try:
+        r = requests.get("https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                                  "Referer": "https://edition.cnn.com/", "Accept": "application/json"},
+                         timeout=30)
+        r.raise_for_status()
+        j = r.json()
+        now = j["fear_and_greed"]
+        hist = j.get("fear_and_greed_historical", {}).get("data", [])
+        out = dict(score=round(float(now["score"]), 1), rating=now.get("rating"),
+                   prev=now.get("previous_close"), w1=now.get("previous_1_week"),
+                   m1=now.get("previous_1_month"), y1=now.get("previous_1_year"),
+                   ts=str(now.get("timestamp", ""))[:10],
+                   hist=[[time.strftime("%Y-%m-%d", time.gmtime(x["x"] / 1000)), round(float(x["y"]), 1)]
+                         for x in hist][-260:],
+                   live=True)
+        for k in ("prev", "w1", "m1", "y1"):
+            out[k] = None if out[k] is None else round(float(out[k]), 1)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(out))
+        print(f"fear & greed: {out['score']} {out['rating']}")
+        return out
+    except Exception as e:
+        print("fear & greed failed:", e)
+        if path.exists():
+            out = json.loads(path.read_text())
+            out["live"] = False
+            return out
+        return None
 
 
 def fetch_prices(u):
