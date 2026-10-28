@@ -101,6 +101,16 @@ def fundamentals_row(f):
     rev_seq = [_growth(revq[i], revq[i + 1]) for i in range(min(3, len(revq) - 1))]
     eps_seq = [_growth(epsq[i], epsq[i + 1]) for i in range(min(3, len(epsq) - 1))]
     up3 = lambda xs: len(xs) == 3 and all(x is not None and x > 0 for x in xs)
+    # year-on-year growth of each of the latest 3 quarters; the weakest of the 3 is what a filter needs
+    yoy3 = lambda xs: (min(g) if len(xs) >= 7 and None not in (g := [_growth(xs[i], xs[i + 4]) for i in range(3)])
+                       else None)
+    # Nasdaq's quarterly history goes back ~3 fiscal years; Yahoo's is the fallback
+    nrev, neps, epsh = f.get("nrev") or [], f.get("neps") or [], f.get("epsh") or []
+    g3r = yoy3(nrev) if len(nrev) >= 7 else yoy3(revq)
+    g3e = next((g for g in (yoy3(neps), yoy3(epsh), yoy3(epsq)) if g is not None), None)
+    rising = lambda xs: len(xs) >= 3 and None not in xs[:3] and xs[0] > xs[1] > xs[2]
+    efc, rfc = f.get("efc") or [None, None], f.get("rfc") or [None, None]
+    pct = lambda x: None if x is None else x * 100
     ipo_years = None
     if f.get("ipo"):
         ipo_years = (pd.Timestamp.now().timestamp() - f["ipo"] / 1000) / (365.25 * 86400)
@@ -115,18 +125,21 @@ def fundamentals_row(f):
         sa=_f(_growth(reva[0], reva[1]) if len(reva) >= 2 else None, 1),
         pe=_f(f.get("pe"), 1), fpe=_f(f.get("fpe"), 1),
         rev3=up3(rev_seq), eps3=up3(eps_seq),
+        g3r=_f(g3r, 1), g3e=_f(g3e, 1),
+        yr=rising(reva) and rising(f.get("epsa") or []) if f.get("epsa") else None,
+        e0=_f(pct(efc[0]), 1), e1=_f(pct(efc[1]), 1), r0=_f(pct(rfc[0]), 1), r1=_f(pct(rfc[1]), 1),
         ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"),
     )
 
 
-def build(px, meta, fund=None):
+def build(px, meta, fund=None, fng=None):
     """px: dict of OHLCV DataFrames. meta: DataFrame indexed by ticker with n, gics, ndx, sp500...
     fund: {ticker: cached Yahoo record}."""
     fund = fund or {}
     # Keep only completed S&P sessions; Yahoo can add a partial row for today
     # (e.g. VIX trades before the cash open), which would leave every stock NaN.
-    days = px["Close"]["^GSPC"].dropna().index
-    P = {k: v.sort_index().loc[days].ffill(limit=3) for k, v in px.items()}
+    P = _clean(px)
+    days = P["Close"].index
     close, high, low, vol = P["Close"], P["High"], P["Low"], P["Volume"]
 
     # ---- temperature (unchanged method) ----
@@ -226,12 +239,31 @@ def build(px, meta, fund=None):
 
     return dict(
         asof=days[-1].strftime("%Y-%m-%d"),
-        hist=hist, stocks=stocks, idx=idx, sectors=sectors, minis=minis,
+        hist=hist, tech=tech(close, high, meta), panic=_panic(indicator_frame(close, high, close["^VIX"]).dropna()),
+        stocks=stocks, idx=idx, sectors=sectors, minis=minis,
         breadth=dict(all=breadth(stocks), ndx=breadth([s for s in stocks if s["ndx"]])),
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
-        sector_zh=SECTOR_ZH, nuniv=len(stocks),
+        sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng,
         nfund=sum(1 for s in stocks if s.get("mcap") is not None))
+
+
+def _panic(ind):
+    from .tech import panic
+    return panic(ind)
+
+
+def tech(close, high, meta):
+    """Nasdaq-100 temperature history in the same shape as the S&P one, or None without ^NDX/^VXN."""
+    from .tech import TECH_RULES, tech_indicator_frame, tech_score
+    if "^NDX" not in close or "^VXN" not in close:
+        return None
+    ind = tech_indicator_frame(close, high, [t for t in meta.index if meta.at[t, "ndx"]]).dropna().tail(HIST_DAYS)
+    hist = []
+    for d, row in ind.iterrows():
+        score, pts = tech_score(row)
+        hist.append(dict(d=d.strftime("%m-%d"), score=score, v={k: round(float(row[k]), 2) for k, *_ in TECH_RULES}, p=pts))
+    return dict(hist=hist, rules=[dict(k=k, n=n, y=y, r=r, side=sd, u=u) for k, n, y, r, sd, u in TECH_RULES]) if hist else None
 
 
 def wants_fundamentals(px, meta):
@@ -246,3 +278,25 @@ def wants_fundamentals(px, meta):
     ok = (last > 20) & (last > ma50 * 0.97) & (ma50 > ma200 * 0.97) & (v.rolling(50).mean().iloc[-1] > 50_000)
     picked = set(ok[ok].index) | {t for t in tick if meta.at[t, "ndx"]}
     return sorted(picked)
+
+
+def _clean(px):
+    days = px["Close"]["^GSPC"].dropna().index
+    return {k: v.sort_index().loc[days].ffill(limit=3) for k, v in px.items()}
+
+
+def stock_pages(px, stocks, days=260):
+    """Per-stock chart data for the stock page: last `days` sessions of OHLCV plus 50/200-day lines."""
+    P = _clean(px)
+    close = P["Close"]
+    ma50, ma200 = close.rolling(50).mean(), close.rolling(200).mean()
+    idx = close.index[-days:]
+    dates = [d.strftime("%Y-%m-%d") for d in idx]
+    out = {}
+    for row in stocks:
+        t = row["s"]
+        col = lambda df, d=2: [_f(x, d) for x in df[t].loc[idx]]
+        out[t] = dict(row, d=dates, o=col(P["Open"]), h=col(P["High"]), l=col(P["Low"]), cl=col(close),
+                      v=[None if pd.isna(x) else int(x) for x in P["Volume"][t].loc[idx]],
+                      m50=col(ma50), m200=col(ma200))
+    return out

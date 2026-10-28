@@ -10,6 +10,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages
@@ -44,3 +45,29 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # GitHub emails the repo owner about new issues, so a failed update opens one (and a later success closes it)
+  report:
+    needs: [build, deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - if: needs.build.result != 'success' || needs.deploy.result != 'success'
+        run: |
+          open=$(gh issue list --label update-failed --state open --json number -q '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "Failed again: $RUN_URL"
+          else
+            gh label create update-failed --color d73a4a --force
+            gh issue create --label update-failed --title "KCDT daily update failed" \
+              --body "@${{ github.repository_owner }} 今日自動更新失敗，網站仍然顯示上次嘅數據。Log: $RUN_URL"
+          fi
+      - if: needs.build.result == 'success' && needs.deploy.result == 'success'
+        run: |
+          for n in $(gh issue list --label update-failed --state open --json number -q '.[].number'); do
+            gh issue close "$n" --comment "Fixed: $RUN_URL"
+          done
