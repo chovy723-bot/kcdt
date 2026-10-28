@@ -18,20 +18,39 @@ def sp500():
     return syms, dict(zip(syms, t["Security"]))
 
 
-def prices(tickers, period="2y", tries=3):
-    for i in range(tries):
-        try:
-            df = yf.download(tickers, period=period, auto_adjust=True, progress=False, threads=True)
-            close, high = df["Close"], df["High"]
-            missing = [t for t in tickers if t not in close or close[t].dropna().empty]
-            if len(missing) > len(tickers) * 0.05:
-                raise RuntimeError(f"{len(missing)} tickers missing, e.g. {missing[:10]}")
-            return close, high
-        except Exception as e:  # Yahoo rate-limits now and then; back off and retry
-            if i == tries - 1:
-                raise
-            print("download failed, retrying:", e)
-            time.sleep(30 * (i + 1))
+def _download(tickers, period):
+    df = yf.download(tickers, period=period, auto_adjust=True, progress=False, threads=False)
+    return df["Close"], df["High"]
+
+
+def prices(tickers, period="2y", chunk=50, pause=3):
+    """Download in small batches with pauses; Yahoo rate-limits big bursts from cloud IPs."""
+    closes, highs = [], []
+    todo = list(tickers)
+    for attempt in range(4):
+        missing = []
+        for i in range(0, len(todo), chunk):
+            part = todo[i:i + chunk]
+            try:
+                c, h = _download(part, period)
+            except Exception as e:
+                print("batch failed:", e)
+                missing += part
+                time.sleep(pause * 10)
+                continue
+            got = [t for t in part if t in c and not c[t].dropna().empty]
+            closes.append(c[got]); highs.append(h[got])
+            missing += [t for t in part if t not in got]
+            time.sleep(pause)
+        print(f"attempt {attempt + 1}: {len(tickers) - len(missing)}/{len(tickers)} downloaded")
+        if not missing:
+            break
+        todo = missing
+        time.sleep(60 * (attempt + 1))
+    if len(missing) > len(tickers) * 0.05:
+        raise RuntimeError(f"{len(missing)} tickers missing, e.g. {missing[:10]}")
+    close, high = pd.concat(closes, axis=1), pd.concat(highs, axis=1)
+    return close.loc[:, ~close.columns.duplicated()], high.loc[:, ~high.columns.duplicated()]
 
 
 def fetch_all():
