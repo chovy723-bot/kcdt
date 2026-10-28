@@ -770,7 +770,9 @@ const LocalDB = {
   async put(col,rec){const a=Store.get(col,[]), i=a.findIndex(x=>x.id===rec.id); i<0?a.push(rec):a[i]=rec; Store.set(col,a); if(JSON.stringify(Store.get(col,[]))!==JSON.stringify(a)) throw new Error('full')},
   async del(col,id){Store.set(col,Store.get(col,[]).filter(x=>x.id!==id))}};
 let DB = LocalDB;
-const FB_CONFIG = null; // KC's Firebase web config; login stays hidden until it is set
+const FB_CONFIG = { // KC's Firebase web app (public identifiers, not secrets; access is enforced by firestore.rules)
+  apiKey: "AIzaSyA-sJb7y9GnC0xfhICiCpA6S4qeQO8Ys8E", authDomain: "kcdt-14ca6.firebaseapp.com", projectId: "kcdt-14ca6",
+  storageBucket: "kcdt-14ca6.firebasestorage.app", messagingSenderId: "10043567090", appId: "1:10043567090:web:dcfcf387e9b8a579a4596b"};
 const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 async function initLogin(){
   if(!FB_CONFIG) return;
