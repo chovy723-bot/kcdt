@@ -211,6 +211,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       <datalist id="tickers"></datalist>
     </form>
     <span class="badge">數據截至 <b class="num" id="asof"></b> 美股收市</span>
+    <button class="tog" id="login" hidden>用 Gmail 登入</button>
   </header>
   <div class="stale" id="stale" role="alert" hidden></div>
 
@@ -387,7 +388,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   <!-- ===== 交易日誌 ===== -->
   <main class="view" id="v-journal" hidden>
     <section aria-labelledby="h-jn">
-      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="muted small" id="j-where">暫時儲喺呢部機嘅瀏覽器</span></div>
+      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="muted small"><span id="j-where">暫時儲喺呢部機嘅瀏覽器</span> <span id="loginmsg"></span></span></div>
       <div class="stats" id="j-stats"></div>
     </section>
     <section class="panel jform" aria-labelledby="h-jf">
@@ -759,9 +760,46 @@ function renderStocks(){
 }
 // ---------- 自訂條件（finviz 式）----------
 // Each numeric option is ">x", "<x" or "a~b" (inclusive; either side may be blank). Categorical options are [label, test].
-const Store = { // browser copy now; the login build swaps this for the cloud
+const Store = { // per-browser settings
   get(k,d){try{const v=localStorage.getItem('kcdt.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
   set(k,v){try{localStorage.setItem('kcdt.'+k,JSON.stringify(v))}catch(e){}}};
+// DB: saved presets and journal trades. Browser copy until the person signs in with Google, then Firestore users/{uid}/{col}/{id}.
+const LocalDB = {
+  where: '暫時儲喺呢部機嘅瀏覽器',
+  async all(col){return Store.get(col,[])},
+  async put(col,rec){const a=Store.get(col,[]), i=a.findIndex(x=>x.id===rec.id); i<0?a.push(rec):a[i]=rec; Store.set(col,a); if(JSON.stringify(Store.get(col,[]))!==JSON.stringify(a)) throw new Error('full')},
+  async del(col,id){Store.set(col,Store.get(col,[]).filter(x=>x.id!==id))}};
+let DB = LocalDB;
+const FB_CONFIG = null; // KC's Firebase web config; login stays hidden until it is set
+const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+async function initLogin(){
+  if(!FB_CONFIG) return;
+  const [{initializeApp},A,F] = await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
+  const app=initializeApp(FB_CONFIG), auth=A.getAuth(app), fs=F.getFirestore(app), btn=$('login');
+  btn.hidden=false;
+  btn.onclick=async()=>{ if(auth.currentUser){await A.signOut(auth);return}
+    try{await A.signInWithPopup(auth,new A.GoogleAuthProvider())}catch(e){ if(e.code==='auth/popup-blocked') A.signInWithRedirect(auth,new A.GoogleAuthProvider()) } };
+  A.onAuthStateChanged(auth, async user=>{
+    if(!user){ DB=LocalDB; btn.textContent='用 Gmail 登入'; btn.title=''; }
+    else {
+      const col=c=>F.collection(fs,'users',user.uid,c);
+      DB={ where:`已同步到雲端 · ${user.email}`,
+        async all(c){return (await F.getDocs(col(c))).docs.map(d=>d.data())},
+        async put(c,rec){await F.setDoc(F.doc(col(c),rec.id),rec)},
+        async del(c,id){await F.deleteDoc(F.doc(col(c),id))}};
+      btn.textContent='登出'; btn.title=user.email;
+      // first sign-in on this browser: move what was saved here into the account
+      let moved=0;
+      for(const c of ['trades','presets']){ const mine=await LocalDB.all(c); if(!mine.length) continue;
+        const have=new Set((await DB.all(c)).map(x=>x.id));
+        for(const r of mine) if(!have.has(r.id)){await DB.put(c,r); moved++}
+        Store.set(c,[]) }
+      if(moved) $('loginmsg').textContent=`已將呢部機 ${moved} 項紀錄搬咗上你個帳戶`;
+    }
+    if(DRAW.journal.done) jReload();
+    if(DRAW.screener.done) drawPre();
+  });
+}
 const CFG=['基本','基本面','技術面'];
 const CF=[
   ['idx','基本','指數',null,[['Nasdaq-100',s=>s.ndx],['指數成份股',s=>s.idx],['非指數成份股',s=>!s.idx]]],
@@ -824,20 +862,22 @@ function drawCF(){
     if(lo===''&&hi==='')delete CFS[k]; else CFS[k]=`${lo}~${hi}`; drawCF(); renderStocks()});
   const n=Object.keys(CFS).length; $('cfn').textContent=n?`（用緊 ${n} 個）`:'（全部「任何」= 冇篩）';
 }
-// 我的預設: {name: {on, cf, g3x}}
-function drawPre(sel=''){const P=Store.get('presets',{});
-  $('pre').innerHTML='<option value="">我的預設…</option>'+Object.keys(P).sort().map(n=>`<option${n===sel?' selected':''}>${esc(n)}</option>`).join('');
-  $('pre-del').hidden=!sel}
+// 我的預設: DB 'presets' rows {id: name, on, cf, g3x}
+let PRE=[];
+async function drawPre(sel=$('pre').value){ PRE=await DB.all('presets');
+  $('pre').innerHTML='<option value="">我的預設…</option>'+PRE.map(p=>p.id).sort().map(n=>`<option${n===sel?' selected':''}>${esc(n)}</option>`).join('');
+  $('pre-del').hidden=!PRE.some(p=>p.id===sel)}
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function preMsg(t){$('pre-msg').textContent=t; clearTimeout(preMsg.t); preMsg.t=setTimeout(()=>$('pre-msg').textContent='',3000)}
 function initPre(){
-  drawPre();
-  $('pre').onchange=()=>{const n=$('pre').value, p=Store.get('presets',{})[n]; $('pre-del').hidden=!n; if(!p)return;
+  drawPre('');
+  $('pre').onchange=()=>{const n=$('pre').value, p=PRE.find(x=>x.id===n); $('pre-del').hidden=!p; if(!p)return;
     on.clear(); p.on.forEach(k=>on.add(k)); CFS={...p.cf}; G3X=p.g3x||50; $('g3x').value=String(G3X); $('pre-name').value=n;
     drawCF(); drawChips(); renderStocks()};
-  $('pre-save').onclick=()=>{const n=$('pre-name').value.trim(); if(!n){$('pre-name').focus();preMsg('先改個名');return}
-    const P=Store.get('presets',{}); P[n]={on:[...on],cf:{...CFS},g3x:G3X}; Store.set('presets',P); drawPre(n); preMsg('已儲存（暫時儲喺呢部機）')};
-  $('pre-del').onclick=()=>{const n=$('pre').value, P=Store.get('presets',{}); delete P[n]; Store.set('presets',P); $('pre-name').value=''; drawPre(); preMsg('已刪除')};
+  $('pre-save').onclick=async()=>{const n=$('pre-name').value.trim(); if(!n){$('pre-name').focus();preMsg('先改個名');return}
+    try{await DB.put('presets',{id:n,on:[...on],cf:{...CFS},g3x:G3X})}catch(e){preMsg('儲唔到，遲啲再試');return}
+    await drawPre(n); preMsg(DB===LocalDB?'已儲存（暫時儲喺呢部機）':'已儲存到你個帳戶')};
+  $('pre-del').onclick=async()=>{const n=$('pre').value; await DB.del('presets',n); $('pre-name').value=''; await drawPre(''); preMsg('已刪除')};
   $('cf-clear').onclick=()=>{CFS={}; drawCF(); renderStocks()};
 }
 DRAW.screener = () => {
@@ -887,13 +927,7 @@ DRAW.news = () => {
 };
 
 // ---------- 交易日誌 ----------
-// DB: the browser copy for now; the Gmail-login build swaps in the cloud store with the same calls.
-const LocalDB = {
-  where: '暫時儲喺呢部機嘅瀏覽器',
-  async all(col){return Store.get(col,[])},
-  async put(col,rec){const a=Store.get(col,[]), i=a.findIndex(x=>x.id===rec.id); i<0?a.push(rec):a[i]=rec; Store.set(col,a); if(JSON.stringify(Store.get(col,[]))!==JSON.stringify(a)) throw new Error('full')},
-  async del(col,id){Store.set(col,Store.get(col,[]).filter(x=>x.id!==id))}};
-let DB = LocalDB, TR = [], jEdit = null, jShots = [];
+let TR = [], jEdit = null, jShots = [];
 const num = v => v===''||v==null?null:+v;
 const days = (a,b) => Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
 function calc(t){
@@ -931,7 +965,7 @@ function jZoom(src){const d=$('j-img'); d.querySelector('img').src=src; d.showMo
 function jShotsDraw(){ $('j-shots').innerHTML = jShots.map((s,i)=>`<span class="thumb"><img src="${s}" alt="截圖 ${i+1}"><button type="button" data-i="${i}" aria-label="刪除截圖 ${i+1}">×</button></span>`).join('');
   $('j-shots').querySelectorAll('img').forEach(im=>im.onclick=()=>jZoom(im.src));
   $('j-shots').querySelectorAll('button').forEach(b=>b.onclick=()=>{jShots.splice(+b.dataset.i,1); jShotsDraw()}); }
-function shrink(file, max=1400, q=.72){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
+function shrink(file, max=1280, q=.7){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
   c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg',q)) }; img.onerror=bad; img.src=URL.createObjectURL(file) }) }
 function jMsg(t){$('j-msg').textContent=t; clearTimeout(jMsg.t); jMsg.t=setTimeout(()=>$('j-msg').textContent='',4000)}
 function jLoad(id){ const t = TR.find(x=>x.id===id), F=$('jf'); if(!t) return; jEdit=id;
@@ -952,7 +986,7 @@ DRAW.journal = () => {
         strat:F.strat.value.trim(), mood:F.mood.value.trim(), why_in:F.why_in.value, why_out:F.why_out.value, review:F.review.value, shots:jShots };
       if((t.close==null)!==(t.sell==null)){ jMsg('平倉日期同賣出價要一齊填（或者一齊留空 = 未平倉）'); return }
       if(t.close && t.close<t.open){ jMsg('平倉日期早過開倉日期'); return }
-      try{ await DB.put('trades', t) }catch(_){ jMsg('儲唔到：瀏覽器空間滿咗，試下刪走啲截圖'); return }
+      try{ await DB.put('trades', t) }catch(_){ jMsg(DB===LocalDB?'儲唔到：瀏覽器空間滿咗，試下刪走啲截圖':'儲唔到：網絡或者截圖太大，遲啲再試'); return }
       await jReload(); jReset(); jMsg('已儲存') };
     $('j-del').onclick=async()=>{ if(!jEdit) return; await DB.del('trades', jEdit); await jReload(); jReset(); jMsg('已刪除') };
     $('j-csv').onclick=()=>{ const H=['股票代號','開倉日期','平倉日期','買入價','賣出價','股數','手續費','買入成本','賣出收入','淨盈虧','淨盈虧%','持倉天數','策略類型','預計止盈','預計止盈%','預計止損','預計止損%','買入理由','賣出理由','復盤筆記','交易情緒'];
@@ -1049,4 +1083,5 @@ function drawStock(){
 
 window.addEventListener('hashchange', route);
 route();
+initLogin().catch(e=>console.warn('login unavailable', e));
 </script>
