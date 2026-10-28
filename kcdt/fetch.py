@@ -20,6 +20,8 @@ LISTS = {  # name -> Wikipedia page
     "sp600": "List_of_S%26P_600_companies",
 }
 UA = {"User-Agent": "Mozilla/5.0 KCDT"}
+NASDAQ_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+             "Chrome/124.0 Safari/537.36", "Accept": "application/json"}
 
 
 def _pick(cols, *keys):
@@ -59,19 +61,41 @@ def _members(page):
 
 def _nasdaq100():
     """Nasdaq's own list (Wikipedia's Nasdaq-100 page no longer carries the member table)."""
-    r = requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100",
-                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
-                     timeout=30)
+    r = requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100", headers=NASDAQ_UA, timeout=30)
     rows = r.json()["data"]["data"]["rows"]
     return pd.DataFrame({"s": [x["symbol"].strip().replace(".", "-") for x in rows],
                          "n": [x["companyName"] for x in rows], "gics": None})
 
 
+# Nasdaq screener sectors -> the Yahoo/finviz names used everywhere else
+NASDAQ_SECTOR = {
+    "Technology": "Technology", "Finance": "Financial Services", "Health Care": "Healthcare",
+    "Consumer Discretionary": "Consumer Cyclical", "Consumer Staples": "Consumer Defensive",
+    "Industrials": "Industrials", "Real Estate": "Real Estate", "Energy": "Energy", "Utilities": "Utilities",
+    "Basic Materials": "Basic Materials", "Telecommunications": "Communication Services",
+}
+SKIP_NAMES = ("Warrant", "Preferred", " Unit", "Rights", "Notes", "Depositary Shares Each")
+
+
+def _all_us(min_cap=3e8, min_price=12):
+    """Every US-listed common stock from Nasdaq's screener, above KC's cap and price floor."""
+    r = requests.get("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&download=true",
+                     headers=NASDAQ_UA, timeout=60)
+    rows = r.json()["data"]["rows"]
+    num = lambda x: float(str(x).replace("$", "").replace(",", "") or 0)
+    keep = [x for x in rows
+            if num(x.get("marketCap")) >= min_cap and num(x.get("lastsale")) >= min_price
+            and x["symbol"].isalpha() and not any(w in x["name"] for w in SKIP_NAMES)]
+    return pd.DataFrame({"s": [x["symbol"].strip() for x in keep], "n": [x["name"].strip() for x in keep],
+                         "gics": [NASDAQ_SECTOR.get(x.get("sector")) for x in keep],
+                         "us": [x.get("country") == "United States" for x in keep]})
+
+
 def _list(key, page, cache):
     """Fetch one member list; fall back to the last good copy so one bad source doesn't stop the update."""
     path = cache / f"members-{key}.json"
-    tries = [_nasdaq100, lambda: _members(page)] if key == "ndx" else [lambda: _members(page)]
+    tries = ([_nasdaq100, lambda: _members(page)] if key == "ndx" else [_all_us] if key == "usa"
+             else [lambda: _members(page)])
     for f in tries:
         try:
             m = f()
@@ -88,18 +112,29 @@ def _list(key, page, cache):
 
 
 def universe(cache="cache"):
-    """One row per ticker: name, GICS sector and which lists it belongs to."""
+    """One row per ticker: name, sector, which index lists it belongs to (idx = any of them),
+    plus all other US-listed stocks above KC's cap and price floor (usa)."""
     frames = []
-    for key, page in LISTS.items():
-        m = _list(key, page, pathlib.Path(cache))
+    for key, page in {**LISTS, "usa": None}.items():
+        try:
+            m = _list(key, page, pathlib.Path(cache))
+        except RuntimeError:
+            if key != "usa":
+                raise
+            print("usa: no list, using index members only")
+            continue
         m[key] = True
         frames.append(m)
         print(f"{key}: {len(m)} members")
-    u = pd.concat(frames).groupby("s").agg({
-        "n": "first", "gics": "first",
-        **{k: lambda x: bool(x.fillna(False).any()) for k in LISTS}})
+    any_ = lambda x: bool(x.fillna(False).any())
+    u = pd.concat(frames)
+    if "us" not in u:
+        u["us"] = None
+    # index lists come first, so their names and GICS sectors win over the screener's
+    u = u.groupby("s").agg({"n": "first", "gics": "first", "us": "first", **{k: any_ for k in LISTS}})
     for k in LISTS:
         u[k] = u[k].fillna(False).astype(bool)
+    u["idx"] = u[list(LISTS)].any(axis=1)
     u["gics"] = u["gics"].fillna("")
     return u
 
@@ -245,10 +280,7 @@ def _money(x):
 
 
 def _nasdaq_quarters(t):
-    r = requests.get(f"https://api.nasdaq.com/api/company/{t.replace('-', '.')}/revenue?limit=1",
-                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
-                     timeout=30)
+    r = requests.get(f"https://api.nasdaq.com/api/company/{t.replace('-', '.')}/revenue?limit=1", headers=NASDAQ_UA, timeout=30)
     rows = ((r.json().get("data") or {}).get("revenueTable") or {}).get("rows") or []
     cols = ["value2", "value3", "value4"]  # fiscal years, newest first
     quarters, cur = [], None
@@ -298,6 +330,98 @@ def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache))
     return cache
+
+
+# ---- earnings calendar with timing (before the open / after the close) from Nasdaq ----
+
+EARN_TIME = {"time-pre-market": "bmo", "time-after-hours": "amc"}
+
+
+def earnings_calendar(days=15):
+    """{ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days."""
+    out = {}
+    start = pd.Timestamp.now(tz="America/New_York").normalize()
+    for d in pd.date_range(start, periods=days):
+        if d.weekday() >= 5:
+            continue
+        day = d.strftime("%Y-%m-%d")
+        try:
+            r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}", headers=NASDAQ_UA, timeout=30)
+            rows = ((r.json().get("data") or {}).get("rows")) or []
+        except Exception as e:
+            print("earnings calendar failed:", day, e)
+            continue
+        for row in rows:
+            sym = (row.get("symbol") or "").strip().replace(".", "-")
+            if sym and sym not in out:
+                out[sym] = [day, EARN_TIME.get(row.get("time"))]
+        time.sleep(0.5)
+    print(f"earnings calendar: {len(out)} companies in the next {days} days")
+    return out
+
+
+# ---- US economic calendar and market headlines (Nasdaq) ----
+
+def _et_to_utc(day, hhmm):
+    """The calendar's "gmt" column is really New York time (BoJ CPI shows at 01:00): return UTC ISO or None."""
+    if not (hhmm or "").strip():
+        return None
+    try:
+        return pd.Timestamp(f"{day} {hhmm.strip()}", tz="America/New_York").tz_convert("UTC").strftime("%Y-%m-%dT%H:%MZ")
+    except Exception:
+        return None
+
+
+def economic_calendar():
+    """US releases for this week and next: [{d, u (UTC time), e (event), a (actual), c (consensus), p (previous)}]."""
+    today = pd.Timestamp.now(tz="America/New_York").normalize()
+    monday = today - pd.Timedelta(days=today.weekday())
+    out = []
+    for d in pd.bdate_range(monday, periods=10):
+        day = d.strftime("%Y-%m-%d")
+        try:
+            r = requests.get(f"https://api.nasdaq.com/api/calendar/economicevents?date={day}", headers=NASDAQ_UA, timeout=30)
+            rows = ((r.json().get("data") or {}).get("rows")) or []
+        except Exception as e:
+            print("economic calendar failed:", day, e)
+            continue
+        clean = lambda x: (x or "").strip() or None
+        out += [dict(d=day, u=_et_to_utc(day, x.get("gmt")), e=clean(x.get("eventName")), a=clean(x.get("actual")),
+                     c=clean(x.get("consensus")), p=clean(x.get("previous")))
+                for x in rows if x.get("country") == "United States"]
+        time.sleep(0.5)
+    print(f"economic calendar: {len(out)} US releases")
+    return out
+
+
+def headlines(feeds=("Markets", "Earnings", "Technology"), n=40):
+    """Latest market news from Nasdaq's RSS feeds: [{t (UTC ISO), title, link, src}]."""
+    import xml.etree.ElementTree as ET
+    from datetime import timezone
+    from email.utils import parsedate_to_datetime
+    seen, out = set(), []
+    for cat in feeds:
+        try:
+            r = requests.get(f"https://www.nasdaq.com/feed/rssoutbound?category={cat}",
+                             headers={"User-Agent": NASDAQ_UA["User-Agent"]}, timeout=30)
+            items = ET.fromstring(r.content).iter("item")
+        except Exception as e:
+            print("headlines failed:", cat, e)
+            continue
+        for it in items:
+            title, link = (it.findtext("title") or "").strip(), (it.findtext("link") or "").strip()
+            if not title or link in seen:
+                continue
+            seen.add(link)
+            try:
+                when = parsedate_to_datetime(it.findtext("pubDate")).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except Exception:
+                when = None
+            src = it.findtext("{http://purl.org/dc/elements/1.1/}creator") or "Nasdaq"
+            out.append(dict(t=when, title=title, link=link, src=src.strip(), cat=cat))
+    out.sort(key=lambda x: x["t"] or "", reverse=True)
+    print(f"headlines: {len(out)}")
+    return out[:n]
 
 
 # ---- CNN Fear & Greed (no official API; keep the last good copy if it fails) ----

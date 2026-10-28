@@ -4,7 +4,8 @@ import pathlib
 import sys
 
 from .compute import build, stock_pages, wants_fundamentals
-from .fetch import fear_greed, fetch_prices, fundamentals, nasdaq_quarters, universe
+from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_prices, fundamentals, headlines,
+                    nasdaq_quarters, universe)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "site"
@@ -34,7 +35,8 @@ def main():
     fund = fundamentals(want, ROOT / "cache" / "fundamentals.json")
     nq = nasdaq_quarters(want, ROOT / "cache" / "nasdaq_quarters.json")
     fund = {t: {**rec, **nq.get(t, {})} for t, rec in fund.items()}
-    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"))
+    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earnings_calendar())
+    data["econ"], data["news"] = economic_calendar(), headlines()
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
     OUT.mkdir(exist_ok=True)

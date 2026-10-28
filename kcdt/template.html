@@ -1,5 +1,5 @@
 <title>KCDT 美股趨勢溫度計</title>
-<meta name="description" content="每日美股趨勢數據：市場溫度、市場寬度、Nasdaq-100 熱力圖、訊號、選股器、業績日曆同個股圖表。只供教育用途。">
+<meta name="description" content="每日美股趨勢數據：KCDT 趨勢分、市場寬度、Nasdaq-100 熱力圖、訊號、選股器、業績日曆同個股圖表。只供教育用途。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@600;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -93,8 +93,11 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .temp1 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .panic{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 8%,var(--panel));border-radius:12px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
 .panic b{color:var(--hot);font-size:16px}
+.rebound{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;font-size:13px;display:grid;gap:4px}
+.rebound .tag{display:inline-block;padding:1px 8px;border-radius:9px;font-weight:600;color:#fff;background:var(--flat)}
+.rebound .tag.on{background:var(--up)}
 .score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
-.zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
+.zone{white-space:nowrap;flex-shrink:0;display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
 .scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
 .scale i{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
 .scalelab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
@@ -129,6 +132,14 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .heat .sl{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
 
 /* screener */
+.cfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cfbar select,.cfbar input,.cfgrid select,.cfgrid input{font:inherit;font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 16px}
+.cfgrid label{display:grid;grid-template-columns:7.5em 1fr;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.cfgrid label.set{color:var(--ink);font-weight:600}
+.cfgrid label.set select{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.cfgrid .rng{grid-column:2;display:flex;gap:4px;align-items:center}
+.cfgrid .rng input{width:100%;min-width:0}
 .filters{display:grid;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
@@ -143,6 +154,28 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .tt i.ok{background:var(--up)}
 .rs{font-family:var(--f-data);font-weight:600;padding:1px 7px;border-radius:5px;background:var(--soft)}
 .yes{color:var(--up);font-weight:700}
+
+/* journal */
+.jform form{display:grid;gap:12px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px 14px}
+.jgrid.wide{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.jgrid label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
+.jgrid input,.jgrid textarea{font:inherit;font-size:14px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0}
+.jshots{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.jshots #j-shots{display:flex;gap:8px}
+.thumb{position:relative}
+.thumb img,#jbody img{height:44px;border-radius:4px;border:1px solid var(--line);cursor:zoom-in;display:block}
+.thumb button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:var(--hot);color:#fff;cursor:pointer;line-height:20px;padding:0}
+#jbody td{white-space:nowrap}
+#jbody tr{cursor:pointer}
+#jbody tr.grp{cursor:default}
+#jbody tr.grp td{background:var(--soft);font-weight:600;font-size:13px}
+#jbody tr:hover td{background:var(--soft)}
+#jbody td.txt{max-width:0}
+#jbody .open td.pl{font-style:italic}
+#j-img{border:0;border-radius:10px;padding:10px;background:var(--panel);max-width:96vw}
+#j-img img{max-width:92vw;max-height:80vh;display:block;margin-bottom:8px}
+#j-img::backdrop{background:rgb(0 0 0 / .6)}
 
 /* earnings */
 .eday{display:grid;gap:6px}
@@ -161,6 +194,11 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .checks .ok{color:var(--up);font-weight:700}
 .checks .no{color:var(--muted)}
 #ohlc{min-height:1.6em}
+.news{list-style:none;margin:0;padding:0}
+.news li{padding:10px 0;border-bottom:1px solid var(--soft);display:grid;gap:2px}
+.news li:last-child{border-bottom:0}
+.news a{color:var(--ink);text-decoration:none;font-weight:500}
+.news a:hover{color:var(--accent);text-decoration:underline}
 footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
 </style>
 
@@ -173,6 +211,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       <datalist id="tickers"></datalist>
     </form>
     <span class="badge">數據截至 <b class="num" id="asof"></b> 美股收市</span>
+    <button class="tog" id="login" hidden>用 Gmail 登入</button>
   </header>
   <div class="stale" id="stale" role="alert" hidden></div>
 
@@ -181,13 +220,15 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <a href="#ideas" data-v="ideas">機會</a>
     <a href="#screener" data-v="screener">選股器</a>
     <a href="#earnings" data-v="earnings">業績日曆</a>
+    <a href="#news" data-v="news">經濟及新聞</a>
+    <a href="#journal" data-v="journal">交易日誌</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
   </nav>
 
   <!-- ===== 大市 ===== -->
   <main class="view" id="v-market">
     <section aria-labelledby="h-temp">
-      <div class="sechead"><h2 id="h-temp">市場溫度</h2><span class="muted small">溫度：8 個指標，每個 0 至 2 分，總分愈高愈危險</span></div>
+      <div class="sechead"><h2 id="h-temp">KCDT 趨勢分</h2><span class="muted small">8 個指標，綠燈 0、黃燈半格、紅燈一格，換算成 0–100，分數愈高風險愈大</span></div>
       <div class="panic" id="panic" role="status" hidden></div>
       <div class="hero">
         <div class="panel thermo" id="thermo"></div>
@@ -199,9 +240,9 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
           <p class="muted small" id="fngnote"></p>
         </div>
         <div class="panel wide" style="display:grid;gap:8px;align-content:start">
-          <div class="sechead"><h3>溫度：過去 60 個交易日</h3><div class="controls tsel"></div></div>
-          <div class="legend"><span><i style="background:var(--cool)"></i>0–4 健康</span><span><i style="background:var(--warm)"></i>5–9 警戒</span><span><i style="background:var(--hot)"></i>10–16 危險</span></div>
-          <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日溫度分數柱狀圖"></svg>
+          <div class="sechead"><h3>趨勢分：過去 60 個交易日</h3><div class="controls tsel"></div></div>
+          <div class="legend"><span><i style="background:var(--cool)"></i>0–30 健康</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 危險</span></div>
+          <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日趨勢分柱狀圖"></svg>
         </div>
       </div>
     </section>
@@ -213,7 +254,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-breadth">
       <div class="sechead">
         <h2 id="h-breadth">市場寬度 <span class="muted small" id="bnote"></span></h2>
-        <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">全部 <span id="b-alln"></span> 隻</button></div>
+        <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">指數成份股 <span id="b-alln"></span> 隻</button><button class="tog" id="b-usa" aria-pressed="false">全美股 <span id="b-usan"></span> 隻</button></div>
       </div>
       <div class="bars" id="bars"></div>
       <div class="cols2">
@@ -229,10 +270,10 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     </section>
 
     <section aria-labelledby="h-ind">
-      <div class="sechead"><h2 id="h-ind">溫度指標</h2><div class="controls tsel"></div></div>
+      <div class="sechead"><h2 id="h-ind">趨勢分指標</h2><div class="controls tsel"></div></div>
       <div class="panel tablewrap">
         <table>
-          <thead><tr><th>#</th><th>指標</th><th class="r">今日數值</th><th class="r">黃燈</th><th class="r">紅燈</th><th>得分</th><th>60 日走勢</th></tr></thead>
+          <thead><tr><th>#</th><th>指標</th><th class="r">今日數值</th><th class="r">黃燈</th><th class="r">紅燈</th><th>燈號</th><th>60 日走勢</th></tr></thead>
           <tbody id="indtable"></tbody>
         </table>
       </div>
@@ -258,7 +299,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
         <p class="muted small" id="heatnote" style="margin-top:6px"></p></div>
     </section>
     <section aria-labelledby="h-sig">
-      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：Nasdaq-100 + S&amp;P 500/400/600。撳代號睇圖。</span></div>
+      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：全美股（市值 3 億、股價 12 美元以上）加指數成份股。撳代號睇圖。</span></div>
       <div class="cols2">
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
@@ -270,6 +311,19 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   <main class="view" id="v-screener" hidden>
     <section aria-labelledby="h-scr">
       <div class="sechead"><h2 id="h-scr">選股器</h2><span class="muted small" id="scrcount"></span></div>
+      <div class="panel filters">
+        <div class="sechead"><h3>自訂條件 <span class="muted small" id="cfn"></span></h3>
+          <div class="controls" id="cftabs"></div></div>
+        <div class="cfgrid" id="cfgrid"></div>
+        <div class="cfbar">
+          <select id="pre" aria-label="我的預設"></select>
+          <input id="pre-name" placeholder="改個名，例如：強勢科技" aria-label="預設名稱">
+          <button class="tog" id="pre-save">儲存目前條件</button>
+          <button class="tog" id="pre-del" hidden>刪除呢個預設</button>
+          <button class="tog" id="cf-clear">清除自訂條件</button>
+          <span class="muted small" id="pre-msg"></span>
+        </div>
+      </div>
       <div class="panel filters">
         <div class="sechead"><h3>KC 嘅條件 <span class="muted small">（撳一下可以開關）</span></h3><button class="tog" id="f-reset">還原預設</button></div>
         <div class="chips" id="chipsA"></div>
@@ -312,8 +366,67 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       <div class="sechead"><h2 id="h-earn">未來兩星期業績</h2>
         <div class="controls"><button class="tog" id="e-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="e-scr" aria-pressed="false">符合 KC 條件</button><button class="tog" id="e-all" aria-pressed="false">全部</button></div></div>
       <div id="earnlist" style="display:grid;gap:14px"></div>
-      <p class="note">業績日嚟自 Yahoo Finance，公司有時會改期，以公司公佈為準。只包括有基本面數據嘅股票。</p>
+      <p class="note">業績日同時間嚟自 Nasdaq 業績日曆（冇嘅就用 Yahoo Finance）。盤前 = 美股開市前公佈，盤後 = 收市後公佈。公司有時會改期，以公司公佈為準。</p>
     </section>
+  </main>
+
+  <!-- ===== 經濟及新聞 ===== -->
+  <main class="view" id="v-news" hidden>
+    <div class="cols2" style="align-items:start">
+      <section aria-labelledby="h-econ">
+        <div class="sechead"><h2 id="h-econ">美國經濟數據</h2><span class="muted small">今個星期同下個星期 · 香港時間</span></div>
+        <div id="econ" style="display:grid;gap:12px"></div>
+      </section>
+      <section aria-labelledby="h-news">
+        <div class="sechead"><h2 id="h-news">市場新聞</h2><span class="muted small" id="newsnote"></span></div>
+        <div class="panel" style="padding:4px 16px"><ul class="news" id="news"></ul></div>
+      </section>
+    </div>
+    <p class="note">經濟數據同新聞嚟自 Nasdaq，每日早上更新一次，唔係即時。數據公佈前「實際」一欄會留空。</p>
+  </main>
+
+  <!-- ===== 交易日誌 ===== -->
+  <main class="view" id="v-journal" hidden>
+    <section aria-labelledby="h-jn">
+      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="muted small"><span id="j-where">暫時儲喺呢部機嘅瀏覽器</span> <span id="loginmsg"></span></span></div>
+      <div class="stats" id="j-stats"></div>
+    </section>
+    <section class="panel jform" aria-labelledby="h-jf">
+      <div class="sechead"><h3 id="h-jf">新增交易</h3><button class="tog" id="j-new" type="button">清空</button></div>
+      <form id="jf" autocomplete="off">
+        <div class="jgrid">
+          <label>股票代號<input name="sym" required list="tickers" style="text-transform:uppercase"></label>
+          <label>開倉日期<input name="open" type="date" required></label>
+          <label>平倉日期<input name="close" type="date"></label>
+          <label>股數<input name="qty" type="number" step="any" min="0" required></label>
+          <label>買入價（USD）<input name="buy" type="number" step="any" min="0" required></label>
+          <label>賣出價（USD）<input name="sell" type="number" step="any" min="0"></label>
+          <label>手續費（USD）<input name="fee" type="number" step="any" min="0" value="0"></label>
+          <label>策略類型<input name="strat" list="j-strats"></label>
+          <label>預計止盈<input name="tp" type="number" step="any" min="0"></label>
+          <label>預計止損<input name="sl" type="number" step="any" min="0"></label>
+          <label>交易情緒<input name="mood" list="j-moods"></label>
+        </div>
+        <div class="jgrid wide">
+          <label>買入理由<textarea name="why_in" rows="3"></textarea></label>
+          <label>賣出理由<textarea name="why_out" rows="3"></textarea></label>
+          <label>復盤筆記（做對／做錯）<textarea name="review" rows="3"></textarea></label>
+        </div>
+        <div class="jshots"><span class="muted small">交易截圖（最多 2 張，會自動壓細）</span><div id="j-shots"></div>
+          <label class="tog" style="display:inline-block">加截圖<input type="file" id="j-file" accept="image/*" hidden></label></div>
+        <div class="cfbar"><button class="tog" type="submit" aria-pressed="true" id="j-save">儲存交易</button><button class="tog" type="button" id="j-del" hidden>刪除呢單交易</button><span class="muted small" id="j-msg"></span></div>
+      </form>
+      <datalist id="j-strats"><option>趨勢跟隨</option><option>突破</option><option>回調買入</option><option>反彈</option><option>業績</option></datalist>
+      <datalist id="j-moods"><option>冷靜理性</option><option>恐懼割肉</option><option>FOMO 追高</option><option>貪心</option><option>報復性交易</option></datalist>
+    </section>
+    <section aria-labelledby="h-jl">
+      <div class="sechead"><h2 id="h-jl">交易紀錄</h2><div class="controls"><button class="tog" id="j-csv">匯出 CSV（Excel 用）</button></div></div>
+      <div class="panel tablewrap"><table id="jtable">
+        <thead><tr><th>代號</th><th>開倉</th><th>平倉</th><th class="r">買入價</th><th class="r">賣出價</th><th class="r">股數</th><th class="r">手續費</th><th class="r">買入成本</th><th class="r">賣出收入</th><th class="r">淨盈虧</th><th class="r">淨盈虧 %</th><th class="r">持倉日</th><th>策略</th><th class="r">止盈</th><th class="r">止損</th><th>情緒</th><th class="r">累計盈虧</th><th>截圖</th></tr></thead>
+        <tbody id="jbody"></tbody></table></div>
+      <p class="note">撳一行就可以改。未平倉嘅交易用最新收市價計浮動盈虧（斜體）。只係你自己嘅紀錄，唔係投資建議。</p>
+    </section>
+    <dialog id="j-img"><img alt="交易截圖"><form method="dialog"><button class="tog">關閉</button></form></dialog>
   </main>
 
   <!-- ===== 個股 ===== -->
@@ -351,7 +464,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   </main>
 
   <footer>
-    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻為原型設定，未經回測驗證。</p>
+    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻已用 2004 年至今嘅數據回測；分數係風險參考，唔係買賣訊號。</p>
     <p>每個交易日美股收市後自動更新（約香港時間早上 7 點）。數據來源：Yahoo Finance、Nasdaq、Wikipedia。</p>
   </footer>
 </div>
@@ -363,6 +476,7 @@ const f = (x, d=2) => x==null?'—':Number(x).toLocaleString('en-US',{minimumFra
 const sgn = (x, d=1) => x==null?'—':(x>0?'+':'') + f(x,d);
 const cls = x => x>0?'up':x<0?'down':'';
 const kvol = v => v==null?'—':v>=1e6?f(v/1e6,2)+'M':v>=1e3?f(v/1e3,0)+'K':String(v);
+const P100 = s => Math.round(s*100/16); // 8 rules × 0–2 points, shown on a 0–100 scale
 const zoneOf = s => s<=4?['健康','--cool']:s<=9?['警戒','--warm']:['危險','--hot'];
 const ZH = D.sector_zh || {};
 const NS='http://www.w3.org/2000/svg';
@@ -391,13 +505,14 @@ $('searchform').onsubmit = e => {
   const hit = BY[q] || BY[q.replace('.','-')] || S.find(s=>(s.n||'').toUpperCase().includes($('q').value.trim().toUpperCase()));
   if(hit){location.hash='s/'+hit.s;$('q').value='';$('q').blur()} else {$('q').setCustomValidity('股票池入面搵唔到');$('q').reportValidity()}
 };
-$('q').oninput = () => { $('q').setCustomValidity(''); if(BY[$('q').value.trim().toUpperCase()]) $('searchform').requestSubmit() };
+// Jump straight away only when a suggestion was picked (typing "T" must not open AT&T)
+$('q').oninput = e => { $('q').setCustomValidity(''); if((!e.inputType || e.inputType==='insertReplacementText') && BY[$('q').value.trim().toUpperCase()]) $('searchform').requestSubmit() };
 
 // ---------- router ----------
 const drawn = {};
 function route(){
   const h = decodeURIComponent(location.hash.slice(1)) || 'market';
-  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings'].includes(h)?h:'market');
+  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings','news','journal'].includes(h)?h:'market');
   if(v==='stock' && !BY[h.slice(2)]) v='market';
   document.querySelectorAll('.view').forEach(x=>x.hidden = x.id!=='v-'+v);
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
@@ -435,15 +550,17 @@ function lineChart(svg, series, {min,max,ticks,fmt,labels}){
 
 // ---------- 大市 ----------
 DRAW.market = () => {
-  const T = {spx:{n:'大市溫度',sub:'S&P 500',hist:D.hist,rules:D.rules}};
-  if(D.tech) T.ndx={n:'科技股溫度',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
+  const T = {spx:{n:'大市趨勢分',sub:'S&P 500',hist:D.hist,rules:D.rules}};
+  if(D.tech) T.ndx={n:'科技股趨勢分',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
   $('thermo').innerHTML = Object.values(T).map(t=>{const H=t.hist, last=H[H.length-1], prev=H[H.length-2], [zn,zc]=zoneOf(last.score);
     const reds=t.rules.filter(r=>last.p[r.k]===2).length, yel=t.rules.filter(r=>last.p[r.k]===1).length;
     return `<div class="temp1"><div class="row"><span class="eyebrow">${t.n} · ${t.sub}</span><span class="zone" style="background:var(${zc})">${zn}</span></div>
-      <div class="score"><b class="num">${last.score}</b><span>/ 16</span></div>
+      <div class="score"><b class="num">${P100(last.score)}</b><span>/ 100</span></div>
       <div class="scale"><i style="left:${last.score/16*100}%"></i></div>
-      <p class="muted small">前一日 ${prev.score} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
-    '<div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>';
+      <p class="muted small">前一日 ${P100(prev.score)} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
+    '<div class="scalelab"><span>0 健康</span><span>31 警戒</span><span>63 危險</span><span>100</span></div>' +
+    (D.rebound ? `<div class="rebound"><div><span class="eyebrow">反彈確認 · QQQ</span> <span class="tag${D.rebound.on?' on':''}">${D.rebound.on?`是（第 ${D.rebound.day} 日）`:'否'}</span> <span class="muted small num">收市 ${D.rebound.close} · 20 日線 ${D.rebound.ma20}</span></div>
+      <p class="muted small">QQQ 企喺向上嘅 20 日線之上。回測（2004–2026）：分數仍然喺警戒/危險區時，用佢做「最少揸一半」嘅參考，2016 年後每年回報 13.7%→15.0%、最大跌幅 -21.4%→-18.9%。但唔好一亮就全倉：2008 年熊市幾次假反彈，咁做最大跌幅會去到 -40%。只供參考，唔係買賣建議。</p></div>` : '');
   if(D.panic && D.panic.on){$('panic').hidden=false;$('panic').innerHTML=`<b>恐慌區（第 ${D.panic.day} 日）</b><span>VIX 同波幅雙紅燈。2004 年至今共 522 日，之後 3 個月 QQQ 平均 +9%，79% 時間上升；但恐慌頭 3 日之後仍有 36% 機會再跌 10%。只供參考，唔係買賣建議。</span>`}
   let tsel='spx';
   const tbtn=()=>document.querySelectorAll('.tsel').forEach(box=>{box.innerHTML=Object.entries(T).map(([k,t])=>`<button class="tog" data-t="${k}" aria-pressed="${k===tsel}">${t.n}</button>`).join('');
@@ -453,10 +570,10 @@ DRAW.market = () => {
     const svg=$('scorechart'); svg.innerHTML=''; const W=640,Hh=200,L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
     const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
-    [0,4,9,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=v});
-    H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${h.score} 分`});
+    [0,5,10,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=P100(v)});
+    H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${P100(h.score)} 分`});
     [0,Math.floor(n/3),Math.floor(2*n/3),n-1].forEach(i=>el('text',{x:L+i*bw+bw/2,y:Hh-8,'text-anchor':i===n-1?'end':i===0?'start':'middle'},svg).textContent=H[i].d);
-    $('indtable').innerHTML = rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${p} 分"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
+    $('indtable').innerHTML = rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${['綠燈','黃燈','紅燈'][p]}"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
   };
 
   fearGreed();
@@ -468,11 +585,14 @@ DRAW.market = () => {
     const b=D.breadth[which], n=b.n||1, pc=x=>(x/n*100).toFixed(1);
     const rows=[['升','跌',b.adv,b.dec],['新高','新低',b.nh,b.nl],['50 日線上','下',b.a50,n-b.a50],['200 日線上','下',b.a200,n-b.a200]];
     $('bars').innerHTML = rows.map(([la,lb,a,c])=>{const tot=(a+c)||1;return `<div class="panel bb"><div class="lab"><span class="up"><b>${la}</b> <span class="num">${pc(a)}% (${a})</span></span><span class="down"><span class="num">(${c}) ${pc(c)}%</span> <b>${lb}</b></span></div><div class="track" role="img" aria-label="${la} ${a}，${lb} ${c}"><i style="width:${a/tot*100}%;background:var(--up)"></i><i style="width:${c/tot*100}%;background:var(--down)"></i></div></div>`}).join('');
-    $('bnote').textContent = which==='ndx'?`Nasdaq-100 ${b.n} 隻`:`全部 ${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600，唔係全美股）`;
+    $('bnote').textContent = {ndx:`Nasdaq-100 ${b.n} 隻`, all:`${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600）`, usa:`全美股 ${b.n} 隻（市值 3 億、股價 12 美元以上，加埋指數成份股）`}[which];
   };
   $('b-alln').textContent = D.breadth.all.n.toLocaleString('en-US');
-  $('b-ndx').onclick=()=>{setPressed(['b-ndx','b-all'],'b-ndx');bars('ndx')};
-  $('b-all').onclick=()=>{setPressed(['b-ndx','b-all'],'b-all');bars('all')};
+  const BB=['b-ndx','b-all','b-usa'];
+  if(D.breadth.usa) $('b-usan').textContent = D.breadth.usa.n.toLocaleString('en-US'); else $('b-usa').remove();
+  $('b-ndx').onclick=()=>{setPressed(BB.filter($),'b-ndx');bars('ndx')};
+  $('b-all').onclick=()=>{setPressed(BB.filter($),'b-all');bars('all')};
+  if($('b-usa')) $('b-usa').onclick=()=>{setPressed(BB.filter($),'b-usa');bars('usa')};
   bars('ndx');
 
   const H=D.hist, hn=H.length-1;
@@ -554,11 +674,11 @@ function heat(){
       const r=el('rect',{x:t.x,y:t.y,width:Math.max(0,t.w-1),height:Math.max(0,t.h-1),fill,class:'tile'},svg);
       r.addEventListener('click',()=>{location.hash='s/'+t.s});
       el('title',{},r).textContent=`${t.s} ${t.n}\n${sgn(v,2)}%${t.mcap?`\n市值 ${f(t.mcap*10,0)} 億美元`:''}\n撳一下睇圖`;
-      const fs=Math.max(9,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
-      let fz=fs; while(fz>8 && t.s.length*fz*0.64+6>t.w) fz--;
-      if(t.s.length*fz*0.64+6<=t.w && t.h>fz*1.3){
+      const fs=Math.max(7,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
+      let fz=fs; while(fz>6 && t.s.length*fz*0.64+3>t.w) fz--;
+      if(t.s.length*fz*0.64+3<=t.w && t.h>fz*1.1){
         const a=el('text',{x:t.x+t.w/2,y:t.y+t.h/2-(t.h>fz*2.6?fz*0.15:-fz*0.35),'text-anchor':'middle',class:'t1','font-size':fz},svg); a.textContent=t.s;
-        if(t.h>fz*2.6){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
+        if(t.h>fz*2.6 && (sgn(v,2)+'%').length*fz*0.62*0.64+3<=t.w){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
       }
     });
   });
@@ -582,8 +702,9 @@ DRAW.ideas = () => {
 };
 
 // ---------- 選股器 ----------
-const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate'];
+const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate','Industrials'];
 const FA=[ // KC's finviz set, on by default
+  ['usa','美國公司',s=>s.us!==false],
   ['cap','市值 ≥ 3 億美元',s=>s.mcap!=null&&s.mcap>=0.3],
   ['sq','營收增長（季，按年）> 5%',s=>s.sq!=null&&s.sq>5],
   ['sa','營收增長（上財年）> 0',s=>s.sa!=null&&s.sa>0],
@@ -593,7 +714,7 @@ const FA=[ // KC's finviz set, on by default
   ['beta','Beta > 1',s=>s.beta!=null&&s.beta>1],
   ['vol','成交量 > 5 萬',s=>s.vol>50000],
   ['px','股價 > 20 美元',s=>s.c>20],
-  ['sec','剔走消費、原材料、金融、醫療、房地產',s=>!EXCL.includes(s.sec)],
+  ['sec','剔走消費、原材料、金融、醫療、房地產、工業',s=>!EXCL.includes(s.sec)],
 ];
 const FB=[ // stronger conditions from KC's notes, off by default
   ['ndx','只睇 Nasdaq-100',s=>s.ndx],
@@ -623,7 +744,7 @@ function drawChips(){chips(FA,'chipsA');chips(FB,'chipsB');
   document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const k=b.dataset.f;on.has(k)?on.delete(k):on.add(k);b.setAttribute('aria-pressed',on.has(k));renderStocks()});
   $('g3lab').textContent=G3X}
 function renderStocks(){
-  const tests=[...FA,...FB].filter(x=>on.has(x[0])).map(x=>x[2]);
+  const tests=[...FA,...FB].filter(x=>on.has(x[0])).map(x=>x[2]).concat(Object.entries(CFS).map(([k,v])=>cfTest(k,v)).filter(Boolean));
   const rows=S.filter(s=>tests.every(t=>t(s))).sort((a,b)=>{const A=a[sortK],B=b[sortK];if(A==null)return 1;if(B==null)return -1;return (typeof A==='string'?A.localeCompare(B):(A-B))*sortDir});
   $('scrcount').textContent=`${S.length.toLocaleString('en-US')} 隻入面有 ${rows.length} 隻符合（${D.nfund} 隻有基本面數據）`;
   $('stockbody').innerHTML = rows.slice(0,200).map(s=>`<tr>
@@ -635,7 +756,131 @@ function renderStocks(){
     <td class="r num">${f(s.inst,0)}</td><td class="r num">${f(s.beta,2)}</td><td class="r num">${s.pe!=null?f(s.pe,1):'—'}</td><td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td>
     <td title="${s.mvpm} 日收高 · 量 ${sgn(s.mvpv,0)}% · 價 ${sgn(s.mvpp)}%"><span class="mvp m${s.mvp}"></span></td>
     <td>${ttbar(s.tt)}</td>
-    <td class="num small">${s.edate||'—'}</td></tr>`).join('') || '<tr><td colspan="18" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
+    <td class="num small" style="white-space:nowrap">${edtxt(s)}</td></tr>`).join('') || '<tr><td colspan="18" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
+}
+// ---------- 自訂條件（finviz 式）----------
+// Each numeric option is ">x", "<x" or "a~b" (inclusive; either side may be blank). Categorical options are [label, test].
+const Store = { // per-browser settings
+  get(k,d){try{const v=localStorage.getItem('kcdt.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('kcdt.'+k,JSON.stringify(v))}catch(e){}}};
+// DB: saved presets and journal trades. Browser copy until the person signs in with Google, then Firestore users/{uid}/{col}/{id}.
+const LocalDB = {
+  where: '暫時儲喺呢部機嘅瀏覽器',
+  async all(col){return Store.get(col,[])},
+  async put(col,rec){const a=Store.get(col,[]), i=a.findIndex(x=>x.id===rec.id); i<0?a.push(rec):a[i]=rec; Store.set(col,a); if(JSON.stringify(Store.get(col,[]))!==JSON.stringify(a)) throw new Error('full')},
+  async del(col,id){Store.set(col,Store.get(col,[]).filter(x=>x.id!==id))}};
+let DB = LocalDB;
+const FB_CONFIG = { // KC's Firebase web app (public identifiers, not secrets; access is enforced by firestore.rules)
+  apiKey: "AIzaSyA-sJb7y9GnC0xfhICiCpA6S4qeQO8Ys8E", authDomain: "kcdt-14ca6.firebaseapp.com", projectId: "kcdt-14ca6",
+  storageBucket: "kcdt-14ca6.firebasestorage.app", messagingSenderId: "10043567090", appId: "1:10043567090:web:dcfcf387e9b8a579a4596b"};
+const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+async function initLogin(){
+  if(!FB_CONFIG) return;
+  const [{initializeApp},A,F] = await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
+  const app=initializeApp(FB_CONFIG), auth=A.getAuth(app), fs=F.getFirestore(app), btn=$('login');
+  btn.hidden=false;
+  btn.onclick=async()=>{ if(auth.currentUser){await A.signOut(auth);return}
+    try{await A.signInWithPopup(auth,new A.GoogleAuthProvider())}catch(e){ if(e.code==='auth/popup-blocked') A.signInWithRedirect(auth,new A.GoogleAuthProvider()) } };
+  A.onAuthStateChanged(auth, async user=>{
+    if(!user){ DB=LocalDB; btn.textContent='用 Gmail 登入'; btn.title=''; }
+    else {
+      const col=c=>F.collection(fs,'users',user.uid,c);
+      DB={ where:`已同步到雲端 · ${user.email}`,
+        async all(c){return (await F.getDocs(col(c))).docs.map(d=>d.data())},
+        async put(c,rec){await F.setDoc(F.doc(col(c),rec.id),rec)},
+        async del(c,id){await F.deleteDoc(F.doc(col(c),id))}};
+      btn.textContent='登出'; btn.title=user.email;
+      // first sign-in on this browser: move what was saved here into the account
+      let moved=0;
+      for(const c of ['trades','presets']){ const mine=await LocalDB.all(c); if(!mine.length) continue;
+        const have=new Set((await DB.all(c)).map(x=>x.id));
+        for(const r of mine) if(!have.has(r.id)){await DB.put(c,r); moved++}
+        Store.set(c,[]) }
+      if(moved) $('loginmsg').textContent=`已將呢部機 ${moved} 項紀錄搬咗上你個帳戶`;
+    }
+    if(DRAW.journal.done) jReload();
+    if(DRAW.screener.done) drawPre();
+  });
+}
+const CFG=['基本','基本面','技術面'];
+const CF=[
+  ['idx','基本','指數',null,[['Nasdaq-100',s=>s.ndx],['指數成份股',s=>s.idx],['非指數成份股',s=>!s.idx]]],
+  ['sec','基本','行業',null,()=>[...new Set(S.map(s=>s.sec).filter(Boolean))].sort().map(x=>[ZH[x]||x,s=>s.sec===x])],
+  ['mcap','基本','市值（億美元）',s=>s.mcap==null?null:s.mcap*10,['>3','>20','>100','>500','>2000','3~20','20~100','<20']],
+  ['c','基本','股價（美元）',s=>s.c,['>12','>20','>50','>100','<20','<50']],
+  ['vol','基本','今日成交量',s=>s.vol,['>50000','>500000','>1000000','>5000000']],
+  ['av','基本','平均成交（50 日）',s=>s.av,['>100000','>500000','>1000000','>5000000']],
+  ['rvol','基本','相對成交',s=>s.rvol,['>1','>1.5','>2','>3','<1']],
+  ['edays','基本','業績日',null,[['未來 7 日內',s=>edIn(s,7)],['未來 14 日內',s=>edIn(s,14)],['14 日內冇業績',s=>!edIn(s,14)]]],
+  ['sq','基本面','營收增長（季）%',s=>s.sq,['>0','>5','>25','>50','>100','<0']],
+  ['eq','基本面','EPS 增長（季）%',s=>s.eq,['>0','>25','>50','>100','<0']],
+  ['sa','基本面','營收增長（年）%',s=>s.sa,['>0','>10','>25','>50']],
+  ['g3','基本面','3 季增長 %',s=>s.g3r==null||s.g3e==null?null:Math.min(s.g3r,s.g3e),['>25','>50','>100']],
+  ['e0','基本面','預測 EPS 今年 %',s=>s.e0,['>0','>15','>25','>50']],
+  ['e1','基本面','預測 EPS 明年 %',s=>s.e1,['>0','>15','>25','>50']],
+  ['pe','基本面','P/E',s=>s.pe!=null&&s.pe>0?s.pe:null,['<15','<25','<50','>50']],
+  ['fpe','基本面','預測 P/E',s=>s.fpe!=null&&s.fpe>0?s.fpe:null,['<15','<25','<50','>50']],
+  ['inst','基本面','機構持股 %',s=>s.inst,['>10','>30','>50','>70','<30']],
+  ['beta','基本面','Beta',s=>s.beta,['>1','>1.5','>2','<1','<0.5']],
+  ['rsr','技術面','RS',s=>s.rsr,['>50','>70','>80','>90','<30']],
+  ['tt','技術面','趨勢模板',s=>s.tt,['>3','>4','5~5']],
+  ['mvp','技術面','MVP 螞蟻',s=>s.mvp,['>1','>2','3~3']],
+  ['dh','技術面','距 52 週高 %',s=>s.dh,['>-5','>-10','>-15','>-25','<-30','<-50']],
+  ['d50','技術面','距 50 日線 %',s=>s.d50,['>0','<0','0~5','0~10','>10','>20']],
+  ['d200','技術面','距 200 日線 %',s=>s.d200,['>0','<0','0~10','>20','>50']],
+  ["x50","技術面","50 / 200 日線",null,[['50 日線較高',s=>s.x50],['50 日線較低',s=>!s.x50]]],
+  ['hl','技術面','52 週高低',null,[['今日創新高',s=>s.nh],['今日創新低',s=>s.nl]]],
+  ['chg','技術面','今日 %',s=>s.chg,['>0','>3','>5','<0','<-3','<-5']],
+  ['r5','技術面','1 週 %',s=>s.r5,['>0','>5','>10','<0','<-10']],
+  ['r21','技術面','1 個月 %',s=>s.r21,['>0','>10','>20','<0','<-10']],
+  ['r63','技術面','3 個月 %',s=>s.r63,['>0','>20','>50','<0','<-20']],
+  ['r126','技術面','6 個月 %',s=>s.r126,['>0','>25','>50','>100','<0']],
+  ['r252','技術面','1 年 %',s=>s.r252,['>0','>50','>100','<0']],
+];
+const edIn=(s,n)=>{if(!s.edate)return false;const t=ymd(nyNow()),e=new Date(nyNow());e.setDate(e.getDate()+n);return s.edate>=t&&s.edate<=ymd(e)};
+const CFK=Object.fromEntries(CF.map(x=>[x[0],x]));
+const cfOpts=x=>typeof x[4]==='function'?x[4]():x[4];
+const rng=e=>e[0]==='>'?[+e.slice(1),null]:e[0]==='<'?[null,+e.slice(1)]:e.split('~').map(v=>v===''?null:+v);
+const big=v=>Math.abs(v)>=1e6?(v/1e6)+' 百萬':Math.abs(v)>=1e4?(v/1e4)+' 萬':v;
+const rlab=e=>{const [a,b]=rng(e);return a!=null&&b!=null?(a===b?`${big(a)}`:`${big(a)} 至 ${big(b)}`):a!=null?`${big(a)} 以上`:`${big(b)} 以下`};
+let CFS={}, cfTab='基本';
+function cfTest(k,v){const x=CFK[k]; if(!x)return null;
+  if(!x[3]){const o=cfOpts(x)[+v]; return o?o[1]:null}
+  const [a,b]=rng(v); if(a==null&&b==null)return null;
+  return s=>{const n=x[3](s); return n!=null&&(a==null||n>=a)&&(b==null||n<=b)}}
+function drawCF(){
+  $('cftabs').innerHTML=[...CFG,'全部'].map(g=>`<button class="tog" data-g="${g}" aria-pressed="${g===cfTab}">${g}</button>`).join('');
+  $('cftabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfTab=b.dataset.g;drawCF()});
+  $('cfgrid').innerHTML=CF.filter(x=>cfTab==='全部'||x[1]===cfTab).map(x=>{const [k,,lab,get]=x, v=CFS[k]??'', opts=cfOpts(x);
+    const list=get?opts.map(o=>[o,rlab(o)]):opts.map((o,i)=>[String(i),o[0]]);
+    const custom=get&&v!==''&&!opts.includes(v), [a,b]=custom?rng(v):[null,null];
+    return `<label class="${v!==''?'set':''}"><span>${lab}</span><select data-cf="${k}"><option value="">任何</option>${list.map(([val,t])=>`<option value="${val}"${val===v?' selected':''}>${t}</option>`).join('')}${get?`<option value="*"${custom?' selected':''}>自訂範圍…</option>`:''}</select>
+      ${get?`<span class="rng"${custom?'':' hidden'}><input type="number" step="any" placeholder="最少" data-lo="${k}" value="${a??''}">–<input type="number" step="any" placeholder="最多" data-hi="${k}" value="${b??''}"></span>`:''}</label>`}).join('');
+  $('cfgrid').querySelectorAll('select').forEach(sel=>sel.onchange=()=>{const k=sel.dataset.cf;
+    if(sel.value==='*'){sel.nextElementSibling.hidden=false;sel.nextElementSibling.querySelector('input').focus();return}
+    if(sel.value==='')delete CFS[k]; else CFS[k]=sel.value; drawCF(); renderStocks()});
+  $('cfgrid').querySelectorAll('.rng input').forEach(inp=>inp.onchange=()=>{const k=inp.dataset.lo||inp.dataset.hi, box=inp.parentElement;
+    const lo=box.querySelector('[data-lo]').value, hi=box.querySelector('[data-hi]').value;
+    if(lo===''&&hi==='')delete CFS[k]; else CFS[k]=`${lo}~${hi}`; drawCF(); renderStocks()});
+  const n=Object.keys(CFS).length; $('cfn').textContent=n?`（用緊 ${n} 個）`:'（全部「任何」= 冇篩）';
+}
+// 我的預設: DB 'presets' rows {id: name, on, cf, g3x}
+let PRE=[];
+async function drawPre(sel=$('pre').value){ PRE=await DB.all('presets');
+  $('pre').innerHTML='<option value="">我的預設…</option>'+PRE.map(p=>p.id).sort().map(n=>`<option${n===sel?' selected':''}>${esc(n)}</option>`).join('');
+  $('pre-del').hidden=!PRE.some(p=>p.id===sel)}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function preMsg(t){$('pre-msg').textContent=t; clearTimeout(preMsg.t); preMsg.t=setTimeout(()=>$('pre-msg').textContent='',3000)}
+function initPre(){
+  drawPre('');
+  $('pre').onchange=()=>{const n=$('pre').value, p=PRE.find(x=>x.id===n); $('pre-del').hidden=!p; if(!p)return;
+    on.clear(); p.on.forEach(k=>on.add(k)); CFS={...p.cf}; G3X=p.g3x||50; $('g3x').value=String(G3X); $('pre-name').value=n;
+    drawCF(); drawChips(); renderStocks()};
+  $('pre-save').onclick=async()=>{const n=$('pre-name').value.trim(); if(!n){$('pre-name').focus();preMsg('先改個名');return}
+    try{await DB.put('presets',{id:n,on:[...on],cf:{...CFS},g3x:G3X})}catch(e){preMsg('儲唔到，遲啲再試');return}
+    await drawPre(n); preMsg(DB===LocalDB?'已儲存（暫時儲喺呢部機）':'已儲存到你個帳戶')};
+  $('pre-del').onclick=async()=>{const n=$('pre').value; await DB.del('presets',n); $('pre-name').value=''; await drawPre(''); preMsg('已刪除')};
+  $('cf-clear').onclick=()=>{CFS={}; drawCF(); renderStocks()};
 }
 DRAW.screener = () => {
   $('g3x').onchange=()=>{G3X=+$('g3x').value;on.add('g3');drawChips();renderStocks()};
@@ -645,11 +890,14 @@ DRAW.screener = () => {
     document.querySelectorAll('#stocktable th button').forEach(x=>{x.dataset.active=x===b?'true':'false';x.textContent=x.textContent.replace(/ [▾▴]$/,'')});
     b.textContent += sortDir<0?' ▾':' ▴'; renderStocks();
   });
-  drawChips(); renderStocks();
+  if(!DRAW.screener.done){initPre();DRAW.screener.done=1}
+  drawCF(); drawChips(); renderStocks();
 };
 
 // ---------- 業績日曆 ----------
 const WD='日一二三四五六';
+const ETIME={bmo:'盤前',amc:'盤後'}, ETORD={bmo:0,amc:1};
+const edtxt = s => s.edate ? s.edate + (ETIME[s.etime] ? ' ' + ETIME[s.etime] : '') : '—';
 let earnSet='ndx';
 function earnings(){
   const today=ymd(nyNow()), end=new Date(nyNow()); end.setDate(end.getDate()+14); const endS=ymd(end);
@@ -657,13 +905,99 @@ function earnings(){
   const rows=S.filter(s=>s.edate && s.edate>=today && s.edate<=endS && pick(s));
   const days={}; rows.forEach(s=>(days[s.edate]=days[s.edate]||[]).push(s));
   $('earnlist').innerHTML = Object.keys(days).sort().map(d=>{
-    const dd=new Date(d+'T12:00:00'), list=days[d].sort((a,b)=>(b.mcap||0)-(a.mcap||0));
-    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table><thead><tr><th>代號</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td>${tk(s)}</td><td class="small">${s.n||''}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${pcell(s.eq)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+    const dd=new Date(d+'T12:00:00'), list=days[d].sort((a,b)=>((ETORD[a.etime]??2)-(ETORD[b.etime]??2))||(b.mcap||0)-(a.mcap||0));
+    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table><thead><tr><th>代號</th><th>時間</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td>${tk(s)}</td><td class="small" style="white-space:nowrap">${ETIME[s.etime]||'<span class="muted">未公佈</span>'}</td><td class="small">${s.n||''}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${pcell(s.eq)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
   }).join('') || '<div class="panel muted">未來兩星期冇呢組股票出業績。</div>';
 }
 DRAW.earnings = () => {
   [['e-ndx','ndx'],['e-scr','scr'],['e-all','all']].forEach(([id,k])=>$(id).onclick=()=>{setPressed(['e-ndx','e-scr','e-all'],id);earnSet=k;earnings()});
   earnings();
+};
+
+// ---------- 經濟及新聞 ----------
+const hkt = iso => new Date(iso).toLocaleString('zh-HK',{timeZone:'Asia/Hong_Kong',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+DRAW.news = () => {
+  const E=D.econ||[], days={};
+  E.forEach(e=>{const iso=e.u||null, hk=iso?new Date(iso):new Date(e.d+'T12:00:00Z');
+    const k=hk.toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'}); (days[k]=days[k]||[]).push({...e,hk:iso?hk.toLocaleTimeString('zh-HK',{timeZone:'Asia/Hong_Kong',hour:'2-digit',minute:'2-digit',hour12:false}):'—'})});
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'});
+  $('econ').innerHTML = Object.keys(days).sort().map(d=>{const dd=new Date(d+'T12:00:00');
+    return `<div class="panel tablewrap" style="padding:10px 12px"><h3 style="margin-bottom:6px"><span class="num">${d.slice(5)}</span> <span class="muted small">星期${WD[dd.getDay()]}${d===today?' · 今日':''}</span></h3><table><thead><tr><th>時間</th><th>數據</th><th class="r">實際</th><th class="r">預期</th><th class="r">前值</th></tr></thead><tbody>${days[d].sort((a,b)=>a.hk.localeCompare(b.hk)).map(e=>`<tr><td class="num small">${e.hk}</td><td class="small">${e.e||''}</td><td class="r num"><b>${e.a||'—'}</b></td><td class="r num muted">${e.c||'—'}</td><td class="r num muted">${e.p||'—'}</td></tr>`).join('')}</tbody></table></div>`}).join('') || '<div class="panel muted">今次拎唔到經濟數據。</div>';
+  const N=D.news||[];
+  $('news').innerHTML = N.map(n=>`<li><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,'&lt;')}</a><span class="muted small">${n.t?hkt(n.t):''} · ${n.src.replace(/</g,'&lt;')}</span></li>`).join('') || '<li class="muted">今次拎唔到新聞。</li>';
+  $('newsnote').textContent = N.length?`${N.length} 條 · 截至更新時間`:'';
+};
+
+// ---------- 交易日誌 ----------
+let TR = [], jEdit = null, jShots = [];
+const num = v => v===''||v==null?null:+v;
+const days = (a,b) => Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+function calc(t){
+  const live = t.sell==null && BY[t.sym] ? BY[t.sym].c : null, out = t.sell ?? live;
+  const cost = t.buy*t.qty, rev = out==null?null:out*t.qty, fee = t.fee||0;
+  const pl = rev==null?null:rev-cost-fee;
+  return {...t, cost, rev, pl, plp: pl==null?null:pl/cost*100, isOpen: t.sell==null,
+    hold: days(t.open, t.close || ymd(nyNow())),
+    tpp: t.tp?(t.tp/t.buy-1)*100:null, slp: t.sl?(t.sl/t.buy-1)*100:null};
+}
+const usd = (x,d=2) => x==null?'—':(x<0?'-':'')+'$'+f(Math.abs(x),d);
+const MON = '一二三四五六七八九十'.split('').concat(['十一','十二']);
+function jRender(){
+  const rows = TR.map(calc).sort((a,b)=>(a.open+(a.close||'')).localeCompare(b.open+(b.close||'')));
+  let cum = 0, month = '';
+  $('jbody').innerHTML = rows.map(t=>{ if(!t.isOpen && t.pl!=null) cum += t.pl;
+    const m = t.open.slice(0,7), head = m!==month ? `<tr class="grp"><td colspan="18">${m.slice(0,4)} 年${MON[+m.slice(5)-1]}月</td></tr>` : ''; month = m;
+    return head + `<tr data-id="${t.id}" class="${t.isOpen?'open':''}"><td><b>${esc(t.sym)}</b></td><td class="num small">${t.open}</td><td class="num small">${t.close||'<span class="muted">未平倉</span>'}</td>
+      <td class="r num">${usd(t.buy)}</td><td class="r num">${t.sell!=null?usd(t.sell):'<span class="muted">'+usd(BY[t.sym]?.c)+'</span>'}</td><td class="r num">${f(t.qty,0)}</td><td class="r num">${usd(t.fee||0)}</td>
+      <td class="r num">${usd(t.cost)}</td><td class="r num">${usd(t.rev)}</td><td class="r num pl ${cls(t.pl)}">${usd(t.pl)}</td><td class="r num pl ${cls(t.plp)}">${t.plp==null?'—':sgn(t.plp,2)+'%'}</td>
+      <td class="r num"><b>${t.hold}</b></td><td class="small">${esc(t.strat||'')}</td>
+      <td class="r num small">${t.tp?usd(t.tp)+` <span class="up">${sgn(t.tpp,1)}%</span>`:'—'}</td><td class="r num small">${t.sl?usd(t.sl)+` <span class="down">${sgn(t.slp,1)}%</span>`:'—'}</td>
+      <td class="small">${esc(t.mood||'')}</td><td class="r num ${cls(cum)}">${t.isOpen?'':usd(cum)}</td>
+      <td><div style="display:flex;gap:4px">${(t.shots||[]).map((s,i)=>`<img src="${s}" alt="截圖 ${i+1}" data-big="1">`).join('')}</div></td></tr>`}).join('') || '<tr><td colspan="18" class="muted">未有紀錄。喺上面填一單交易就得。</td></tr>';
+  $('jbody').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{ if(e.target.dataset.big){jZoom(e.target.src);return} jLoad(tr.dataset.id)});
+  const done = rows.filter(t=>!t.isOpen && t.pl!=null), win = done.filter(t=>t.pl>0), loss = done.filter(t=>t.pl<0);
+  const avg = a => a.length ? a.reduce((s,t)=>s+t.pl,0)/a.length : null, aw=avg(win), al=avg(loss);
+  $('j-stats').innerHTML = [
+    stat('已平倉', `${done.length} 單`), stat('勝率', done.length?f(win.length/done.length*100,0)+'%':'—'),
+    stat('累計盈虧', `<span class="${cls(cum)}">${usd(cum)}</span>`), stat('平均賺', `<span class="up">${usd(aw)}</span>`),
+    stat('平均蝕', `<span class="down">${usd(al)}</span>`), stat('盈虧比', aw!=null&&al?f(aw/-al,2):'—'),
+    stat('平均持倉', done.length?f(done.reduce((s,t)=>s+t.hold,0)/done.length,0)+' 日':'—'), stat('未平倉', `${rows.length-done.length} 單`)].join('');
+}
+function jZoom(src){const d=$('j-img'); d.querySelector('img').src=src; d.showModal()}
+function jShotsDraw(){ $('j-shots').innerHTML = jShots.map((s,i)=>`<span class="thumb"><img src="${s}" alt="截圖 ${i+1}"><button type="button" data-i="${i}" aria-label="刪除截圖 ${i+1}">×</button></span>`).join('');
+  $('j-shots').querySelectorAll('img').forEach(im=>im.onclick=()=>jZoom(im.src));
+  $('j-shots').querySelectorAll('button').forEach(b=>b.onclick=()=>{jShots.splice(+b.dataset.i,1); jShotsDraw()}); }
+function shrink(file, max=1280, q=.7){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
+  c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg',q)) }; img.onerror=bad; img.src=URL.createObjectURL(file) }) }
+function jMsg(t){$('j-msg').textContent=t; clearTimeout(jMsg.t); jMsg.t=setTimeout(()=>$('j-msg').textContent='',4000)}
+function jLoad(id){ const t = TR.find(x=>x.id===id), F=$('jf'); if(!t) return; jEdit=id;
+  for(const el of F.elements) if(el.name) el.value = t[el.name] ?? '';
+  jShots=[...(t.shots||[])]; jShotsDraw(); $('h-jf').textContent='修改交易：'+t.sym; $('j-del').hidden=false; $('j-save').textContent='儲存修改';
+  $('h-jf').scrollIntoView({behavior:'smooth',block:'start'}) }
+function jReset(){ jEdit=null; jShots=[]; $('jf').reset(); $('jf').elements.open.value=ymd(nyNow()); jShotsDraw();
+  $('h-jf').textContent='新增交易'; $('j-del').hidden=true; $('j-save').textContent='儲存交易' }
+async function jReload(){ TR = await DB.all('trades'); $('j-where').textContent = DB.where; jRender() }
+DRAW.journal = () => {
+  if(!DRAW.journal.done){ DRAW.journal.done=1;
+    $('j-new').onclick=jReset;
+    $('j-file').onchange=async e=>{ const fl=e.target.files[0]; e.target.value=''; if(!fl) return;
+      if(jShots.length>=2){jMsg('最多 2 張截圖');return} try{ jShots.push(await shrink(fl)); jShotsDraw() }catch(_){ jMsg('呢個檔案打唔開') } };
+    $('jf').onsubmit=async e=>{ e.preventDefault(); const F=e.target.elements;
+      const t={ id: jEdit || Date.now().toString(36)+Math.random().toString(36).slice(2,6), sym:F.sym.value.trim().toUpperCase(), open:F.open.value, close:F.close.value||null,
+        buy:num(F.buy.value), sell:num(F.sell.value), qty:num(F.qty.value), fee:num(F.fee.value)||0, tp:num(F.tp.value), sl:num(F.sl.value),
+        strat:F.strat.value.trim(), mood:F.mood.value.trim(), why_in:F.why_in.value, why_out:F.why_out.value, review:F.review.value, shots:jShots };
+      if((t.close==null)!==(t.sell==null)){ jMsg('平倉日期同賣出價要一齊填（或者一齊留空 = 未平倉）'); return }
+      if(t.close && t.close<t.open){ jMsg('平倉日期早過開倉日期'); return }
+      try{ await DB.put('trades', t) }catch(_){ jMsg(DB===LocalDB?'儲唔到：瀏覽器空間滿咗，試下刪走啲截圖':'儲唔到：網絡或者截圖太大，遲啲再試'); return }
+      await jReload(); jReset(); jMsg('已儲存') };
+    $('j-del').onclick=async()=>{ if(!jEdit) return; await DB.del('trades', jEdit); await jReload(); jReset(); jMsg('已刪除') };
+    $('j-csv').onclick=()=>{ const H=['股票代號','開倉日期','平倉日期','買入價','賣出價','股數','手續費','買入成本','賣出收入','淨盈虧','淨盈虧%','持倉天數','策略類型','預計止盈','預計止盈%','預計止損','預計止損%','買入理由','賣出理由','復盤筆記','交易情緒'];
+      const q=v=>v==null?'':/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v), r2=x=>x==null?null:Math.round(x*100)/100;
+      const lines=[H, ...TR.map(calc).sort((a,b)=>a.open.localeCompare(b.open)).map(t=>[t.sym,t.open,t.close,t.buy,t.sell,t.qty,t.fee,r2(t.cost),t.isOpen?null:r2(t.rev),t.isOpen?null:r2(t.pl),t.isOpen?null:r2(t.plp),t.hold,t.strat,t.tp,r2(t.tpp),t.sl,r2(t.slp),t.why_in,t.why_out,t.review,t.mood])].map(r=>r.map(q).join(','));
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'})); a.download=`kcdt-journal-${ymd(nyNow())}.csv`; a.click(); };
+    jReset();
+  }
+  jReload();
 };
 
 // ---------- 個股 ----------
@@ -674,7 +1008,7 @@ function showStock(t){
   $('s-tk').textContent=s.s; $('s-name').textContent=s.n||'';
   $('s-sec').textContent=[ZH[s.sec]||s.sec, s.ind].filter(Boolean).join(' · ');
   $('s-px').textContent=f(s.c); $('s-chg').innerHTML=`<span class="${cls(s.chg)}">${sgn(s.chg,2)}%</span> <span class="muted small">${D.asof}</span>`;
-  const tags=[s.ndx?'Nasdaq-100':null, passKC(s)?'符合 KC 條件':null, s.nh?'今日創 52 週新高':null, s.nl?'今日創 52 週新低':null, s.mvp===3?'MVP 3/3':null, s.edate?`業績日 ${s.edate}`:null].filter(Boolean);
+  const tags=[s.ndx?'Nasdaq-100':null, passKC(s)?'符合 KC 條件':null, s.nh?'今日創 52 週新高':null, s.nl?'今日創 52 週新低':null, s.mvp===3?'MVP 3/3':null, s.edate?`業績日 ${edtxt(s)}`:null].filter(Boolean);
   $('s-tags').innerHTML=tags.map(x=>`<span class="badge">${x}</span>`).join('');
   $('s-stats').innerHTML=[
     stat('RS 排名', `<span style="color:${rsColor(s.rsr)}">${s.rsr}</span>`), stat('距 52 週高', f(s.dh,1)+'%'),
@@ -687,7 +1021,7 @@ function showStock(t){
     stat('營收增長（上財年）', s.sa!=null?sgn(s.sa)+'%':'—'), stat('機構持股', s.inst!=null?f(s.inst,0)+'%':'—'),
     stat('3 季按年最低（營收 / EPS）', pair(s.g3r,s.g3e)), stat('連續 2 年增長', s.yr==null?'—':s.yr?'<span class="up">係</span>':'唔係'),
     stat('預測 EPS（今年 / 明年）', pair(s.e0,s.e1)), stat('預測營收（今年 / 明年）', pair(s.r0,s.r1)),
-    stat('上市', s.ipo!=null?f(s.ipo,1)+' 年':'—'), stat('下次業績', s.edate||'—'),
+    stat('上市', s.ipo!=null?f(s.ipo,1)+' 年':'—'), stat('下次業績', edtxt(s)),
   ].join('');
   $('s-ttn').textContent=`${s.tt} / 5`;
   const c=s.c, ok=b=>b?'<span class="ok">✓</span>':'<span class="no">✗</span>';
@@ -751,4 +1085,5 @@ function drawStock(){
 
 window.addEventListener('hashchange', route);
 route();
+initLogin().catch(e=>console.warn('login unavailable', e));
 </script>

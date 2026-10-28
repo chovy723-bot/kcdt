@@ -22,12 +22,15 @@ def fake_prices(tickers, days=500, seed=1):
 
 
 def fake_meta(universe):
-    return pd.DataFrame({
+    m = pd.DataFrame({
         "n": [f"Company {t}" for t in universe],
         "gics": [GICS[i % len(GICS)] for i in range(len(universe))],
         "ndx": [i < 100 for i in range(len(universe))],
-        "sp500": True, "sp400": False, "sp600": False,
+        "sp500": [i < 1000 for i in range(len(universe))], "sp400": False, "sp600": False,
+        "us": [True if i % 3 else None for i in range(len(universe))],
     }, index=universe)
+    m["idx"] = m["ndx"] | m["sp500"]
+    return m
 
 
 def fake_fund(tickers, seed=2):
@@ -46,7 +49,7 @@ def fake_fund(tickers, seed=2):
 
 def test_build():
     universe = [f"S{i:04d}" for i in range(1100)] + DOW30[:5]
-    tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS] + ["^NDX", "^VXN"]))
+    tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS] + ["^NDX", "^VXN", "QQQ"]))
     px = fake_prices(tickers)
     # a partial "today" row where only VIX has traded
     extra = pd.Timestamp("2026-10-28")
@@ -58,19 +61,23 @@ def test_build():
     assert len(want) >= 100
     fng = dict(score=42.0, rating="fear", prev=40.1, w1=35.0, m1=55.2, y1=60.0, ts="2026-10-27",
                hist=[["2026-%02d-%02d" % (1 + i // 28, 1 + i % 28), 30 + (i * 7) % 50] for i in range(250)], live=True)
-    d = build(px, meta, fake_fund(want), fng)
+    d = build(px, meta, fake_fund(want), fng, {"S0001": ["2026-10-29", "amc"]})
     assert d["asof"] == "2026-10-27"
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 1105
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
     assert d["breadth"]["ndx"]["n"] == 100 and d["nfund"] == len(want)
+    assert d["breadth"]["usa"]["n"] == 1105 and d["breadth"]["all"]["n"] == 1000
     assert len(d["minis"]) == 4 and len(d["minis"][0]["c"]) == 60
     ranks = [s["rsr"] for s in d["stocks"]]
     assert min(ranks) == 1 and max(ranks) == 99
     f0 = next(s for s in d["stocks"] if s.get("mcap") is not None)
     assert f0["g3e"] == 100.0 and f0["yr"] is True and f0["e0"] == 30.0 and f0["r1"] is None  # min of 1.5/0.7, 1.2/0.6, 1.0/0.5
     assert d["fng"]["score"] == 42.0
+    s1 = next(s for s in d["stocks"] if s["s"] == "S0001")
+    assert s1["edate"] == "2026-10-29" and s1["etime"] == "amc"
     assert len(d["tech"]["hist"]) == 60 and 0 <= d["tech"]["hist"][-1]["score"] <= 16
     assert set(d["panic"]) == {"on", "day"}
+    assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
     assert len(pages) == 1105 and len(nv["d"]) == 260 and nv["d"][-1] == "2026-10-27"
@@ -82,6 +89,9 @@ if __name__ == "__main__":
     import pathlib
     from kcdt import __main__ as m
     d, pages = test_build()
+    d["econ"] = [dict(d="2026-10-28", u="2026-10-28T12:30Z", e="GDP Price Index", a="2.1%", c="2.0%", p="1.9%"),
+                 dict(d="2026-10-29", u="2026-10-29T18:00Z", e="Fed Interest Rate Decision", a=None, c="4.25%", p="4.50%")]
+    d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets")]
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")

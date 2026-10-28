@@ -17,3 +17,11 @@ def test_tech_and_panic():
     spx = pd.DataFrame({"vix5": [20, 30, 31, 32], "rv21": [20, 26, 27, 28]})
     assert panic(spx) == {"on": True, "day": 3}
     assert panic(spx.iloc[:1]) == {"on": False, "day": 0}
+
+
+def test_rebound():
+    from kcdt.tech import rebound
+    up = pd.Series(np.linspace(100, 130, 40))
+    assert rebound(up)["on"] and rebound(up)["day"] >= 10
+    down = pd.Series(np.linspace(130, 100, 40))
+    assert not rebound(down)["on"]
