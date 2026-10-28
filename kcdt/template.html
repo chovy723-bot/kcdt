@@ -161,6 +161,11 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .checks .ok{color:var(--up);font-weight:700}
 .checks .no{color:var(--muted)}
 #ohlc{min-height:1.6em}
+.news{list-style:none;margin:0;padding:0}
+.news li{padding:10px 0;border-bottom:1px solid var(--soft);display:grid;gap:2px}
+.news li:last-child{border-bottom:0}
+.news a{color:var(--ink);text-decoration:none;font-weight:500}
+.news a:hover{color:var(--accent);text-decoration:underline}
 footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
 </style>
 
@@ -181,6 +186,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <a href="#ideas" data-v="ideas">機會</a>
     <a href="#screener" data-v="screener">選股器</a>
     <a href="#earnings" data-v="earnings">業績日曆</a>
+    <a href="#news" data-v="news">經濟及新聞</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
   </nav>
 
@@ -213,7 +219,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-breadth">
       <div class="sechead">
         <h2 id="h-breadth">市場寬度 <span class="muted small" id="bnote"></span></h2>
-        <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">全部 <span id="b-alln"></span> 隻</button></div>
+        <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">指數成份股 <span id="b-alln"></span> 隻</button><button class="tog" id="b-usa" aria-pressed="false">全美股 <span id="b-usan"></span> 隻</button></div>
       </div>
       <div class="bars" id="bars"></div>
       <div class="cols2">
@@ -258,7 +264,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
         <p class="muted small" id="heatnote" style="margin-top:6px"></p></div>
     </section>
     <section aria-labelledby="h-sig">
-      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：Nasdaq-100 + S&amp;P 500/400/600。撳代號睇圖。</span></div>
+      <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：全美股（市值 3 億、股價 20 美元以上）加指數成份股。撳代號睇圖。</span></div>
       <div class="cols2">
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
         <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
@@ -314,6 +320,21 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       <div id="earnlist" style="display:grid;gap:14px"></div>
       <p class="note">業績日同時間嚟自 Nasdaq 業績日曆（冇嘅就用 Yahoo Finance）。盤前 = 美股開市前公佈，盤後 = 收市後公佈。公司有時會改期，以公司公佈為準。</p>
     </section>
+  </main>
+
+  <!-- ===== 經濟及新聞 ===== -->
+  <main class="view" id="v-news" hidden>
+    <div class="cols2" style="align-items:start">
+      <section aria-labelledby="h-econ">
+        <div class="sechead"><h2 id="h-econ">美國經濟數據</h2><span class="muted small">今個星期同下個星期 · 香港時間</span></div>
+        <div id="econ" style="display:grid;gap:12px"></div>
+      </section>
+      <section aria-labelledby="h-news">
+        <div class="sechead"><h2 id="h-news">市場新聞</h2><span class="muted small" id="newsnote"></span></div>
+        <div class="panel" style="padding:4px 16px"><ul class="news" id="news"></ul></div>
+      </section>
+    </div>
+    <p class="note">經濟數據同新聞嚟自 Nasdaq，每日早上更新一次，唔係即時。數據公佈前「實際」一欄會留空。</p>
   </main>
 
   <!-- ===== 個股 ===== -->
@@ -398,7 +419,7 @@ $('q').oninput = e => { $('q').setCustomValidity(''); if((!e.inputType || e.inpu
 const drawn = {};
 function route(){
   const h = decodeURIComponent(location.hash.slice(1)) || 'market';
-  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings'].includes(h)?h:'market');
+  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','screener','earnings','news'].includes(h)?h:'market');
   if(v==='stock' && !BY[h.slice(2)]) v='market';
   document.querySelectorAll('.view').forEach(x=>x.hidden = x.id!=='v-'+v);
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
@@ -469,11 +490,14 @@ DRAW.market = () => {
     const b=D.breadth[which], n=b.n||1, pc=x=>(x/n*100).toFixed(1);
     const rows=[['升','跌',b.adv,b.dec],['新高','新低',b.nh,b.nl],['50 日線上','下',b.a50,n-b.a50],['200 日線上','下',b.a200,n-b.a200]];
     $('bars').innerHTML = rows.map(([la,lb,a,c])=>{const tot=(a+c)||1;return `<div class="panel bb"><div class="lab"><span class="up"><b>${la}</b> <span class="num">${pc(a)}% (${a})</span></span><span class="down"><span class="num">(${c}) ${pc(c)}%</span> <b>${lb}</b></span></div><div class="track" role="img" aria-label="${la} ${a}，${lb} ${c}"><i style="width:${a/tot*100}%;background:var(--up)"></i><i style="width:${c/tot*100}%;background:var(--down)"></i></div></div>`}).join('');
-    $('bnote').textContent = which==='ndx'?`Nasdaq-100 ${b.n} 隻`:`全部 ${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600，唔係全美股）`;
+    $('bnote').textContent = {ndx:`Nasdaq-100 ${b.n} 隻`, all:`${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600）`, usa:`全美股 ${b.n} 隻（市值 3 億、股價 20 美元以上，加埋指數成份股）`}[which];
   };
   $('b-alln').textContent = D.breadth.all.n.toLocaleString('en-US');
-  $('b-ndx').onclick=()=>{setPressed(['b-ndx','b-all'],'b-ndx');bars('ndx')};
-  $('b-all').onclick=()=>{setPressed(['b-ndx','b-all'],'b-all');bars('all')};
+  const BB=['b-ndx','b-all','b-usa'];
+  if(D.breadth.usa) $('b-usan').textContent = D.breadth.usa.n.toLocaleString('en-US'); else $('b-usa').remove();
+  $('b-ndx').onclick=()=>{setPressed(BB.filter($),'b-ndx');bars('ndx')};
+  $('b-all').onclick=()=>{setPressed(BB.filter($),'b-all');bars('all')};
+  if($('b-usa')) $('b-usa').onclick=()=>{setPressed(BB.filter($),'b-usa');bars('usa')};
   bars('ndx');
 
   const H=D.hist, hn=H.length-1;
@@ -585,6 +609,7 @@ DRAW.ideas = () => {
 // ---------- 選股器 ----------
 const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate','Industrials'];
 const FA=[ // KC's finviz set, on by default
+  ['usa','美國公司',s=>s.us!==false],
   ['cap','市值 ≥ 3 億美元',s=>s.mcap!=null&&s.mcap>=0.3],
   ['sq','營收增長（季，按年）> 5%',s=>s.sq!=null&&s.sq>5],
   ['sa','營收增長（上財年）> 0',s=>s.sa!=null&&s.sa>0],
@@ -667,6 +692,20 @@ function earnings(){
 DRAW.earnings = () => {
   [['e-ndx','ndx'],['e-scr','scr'],['e-all','all']].forEach(([id,k])=>$(id).onclick=()=>{setPressed(['e-ndx','e-scr','e-all'],id);earnSet=k;earnings()});
   earnings();
+};
+
+// ---------- 經濟及新聞 ----------
+const hkt = iso => new Date(iso).toLocaleString('zh-HK',{timeZone:'Asia/Hong_Kong',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+DRAW.news = () => {
+  const E=D.econ||[], days={};
+  E.forEach(e=>{const iso=e.u||null, hk=iso?new Date(iso):new Date(e.d+'T12:00:00Z');
+    const k=hk.toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'}); (days[k]=days[k]||[]).push({...e,hk:iso?hk.toLocaleTimeString('zh-HK',{timeZone:'Asia/Hong_Kong',hour:'2-digit',minute:'2-digit',hour12:false}):'—'})});
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'});
+  $('econ').innerHTML = Object.keys(days).sort().map(d=>{const dd=new Date(d+'T12:00:00');
+    return `<div class="panel tablewrap" style="padding:10px 12px"><h3 style="margin-bottom:6px"><span class="num">${d.slice(5)}</span> <span class="muted small">星期${WD[dd.getDay()]}${d===today?' · 今日':''}</span></h3><table><thead><tr><th>時間</th><th>數據</th><th class="r">實際</th><th class="r">預期</th><th class="r">前值</th></tr></thead><tbody>${days[d].sort((a,b)=>a.hk.localeCompare(b.hk)).map(e=>`<tr><td class="num small">${e.hk}</td><td class="small">${e.e||''}</td><td class="r num"><b>${e.a||'—'}</b></td><td class="r num muted">${e.c||'—'}</td><td class="r num muted">${e.p||'—'}</td></tr>`).join('')}</tbody></table></div>`}).join('') || '<div class="panel muted">今次拎唔到經濟數據。</div>';
+  const N=D.news||[];
+  $('news').innerHTML = N.map(n=>`<li><a href="${n.link}" target="_blank" rel="noopener">${n.title.replace(/</g,'&lt;')}</a><span class="muted small">${n.t?hkt(n.t):''} · ${n.src.replace(/</g,'&lt;')}</span></li>`).join('') || '<li class="muted">今次拎唔到新聞。</li>';
+  $('newsnote').textContent = N.length?`${N.length} 條 · 截至更新時間`:'';
 };
 
 // ---------- 個股 ----------

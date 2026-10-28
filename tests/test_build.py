@@ -22,12 +22,15 @@ def fake_prices(tickers, days=500, seed=1):
 
 
 def fake_meta(universe):
-    return pd.DataFrame({
+    m = pd.DataFrame({
         "n": [f"Company {t}" for t in universe],
         "gics": [GICS[i % len(GICS)] for i in range(len(universe))],
         "ndx": [i < 100 for i in range(len(universe))],
-        "sp500": True, "sp400": False, "sp600": False,
+        "sp500": [i < 1000 for i in range(len(universe))], "sp400": False, "sp600": False,
+        "us": [True if i % 3 else None for i in range(len(universe))],
     }, index=universe)
+    m["idx"] = m["ndx"] | m["sp500"]
+    return m
 
 
 def fake_fund(tickers, seed=2):
@@ -63,6 +66,7 @@ def test_build():
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 1105
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
     assert d["breadth"]["ndx"]["n"] == 100 and d["nfund"] == len(want)
+    assert d["breadth"]["usa"]["n"] == 1105 and d["breadth"]["all"]["n"] == 1000
     assert len(d["minis"]) == 4 and len(d["minis"][0]["c"]) == 60
     ranks = [s["rsr"] for s in d["stocks"]]
     assert min(ranks) == 1 and max(ranks) == 99
@@ -84,6 +88,9 @@ if __name__ == "__main__":
     import pathlib
     from kcdt import __main__ as m
     d, pages = test_build()
+    d["econ"] = [dict(d="2026-10-28", u="2026-10-28T12:30Z", e="GDP Price Index", a="2.1%", c="2.0%", p="1.9%"),
+                 dict(d="2026-10-29", u="2026-10-29T18:00Z", e="Fed Interest Rate Decision", a=None, c="4.25%", p="4.50%")]
+    d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets")]
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")

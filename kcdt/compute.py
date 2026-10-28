@@ -178,7 +178,8 @@ def build(px, meta, fund=None, fng=None, earn=None):
         gics = meta.at[t, "gics"]
         sec = fund.get(t, {}).get("ysec") or GICS_TO_SECTOR.get(gics, gics or "")
         row = dict(
-            s=t, n=meta.at[t, "n"], sec=sec, ndx=bool(meta.at[t, "ndx"]),
+            s=t, n=meta.at[t, "n"], sec=sec, ndx=bool(meta.at[t, "ndx"]), idx=bool(meta.at[t, "idx"]),
+            us=None if pd.isna(meta.at[t, "us"]) else bool(meta.at[t, "us"]),
             c=_f(lc), chg=_f(chg[t]), r5=_f(ret[5][t], 1), r21=_f(ret[21][t], 1), r63=_f(ret[63][t], 1),
             r126=_f(ret[126][t], 1), r252=_f(ret[252][t], 1),
             d50=_f((lc / m50 - 1) * 100, 1), d200=_f((lc / m200 - 1) * 100, 1),
@@ -243,7 +244,8 @@ def build(px, meta, fund=None, fng=None, earn=None):
         asof=days[-1].strftime("%Y-%m-%d"),
         hist=hist, tech=tech(close, high, meta), panic=_panic(indicator_frame(close, high, close["^VIX"]).dropna()),
         stocks=stocks, idx=idx, sectors=sectors, minis=minis,
-        breadth=dict(all=breadth(stocks), ndx=breadth([s for s in stocks if s["ndx"]])),
+        breadth=dict(usa=breadth(stocks), all=breadth([s for s in stocks if s["idx"]]),
+                     ndx=breadth([s for s in stocks if s["ndx"]])),
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
         sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng,
