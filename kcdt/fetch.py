@@ -17,7 +17,7 @@ LISTS = {  # name -> Wikipedia page
     "sp400": "List_of_S%26P_400_companies",
     "sp600": "List_of_S%26P_600_companies",
 }
-UA = {"User-Agent": "Mozilla/5.0 KCDT (github.com/chovy723-bot/kcdt)"}
+UA = {"User-Agent": "Mozilla/5.0 KCDT"}
 
 
 def _pick(cols, *keys):
@@ -29,24 +29,30 @@ def _pick(cols, *keys):
 
 
 def _members(page):
-    html = requests.get(WIKI + page, headers=UA, timeout=30).text
     seen = []
-    for t in pd.read_html(io.StringIO(html)):
-        if isinstance(t.columns, pd.MultiIndex):
-            t.columns = [" ".join(str(x) for x in c if "Unnamed" not in str(x)) for c in t.columns]
-        cols = {str(c).strip().lower(): c for c in t.columns}
-        sym = _pick(cols, "symbol", "ticker")
-        name = _pick(cols, "security", "company", "name")
-        sec = _pick(cols, "gics sector", "sector", "icb industry", "industry")
-        if len(t) >= 90:
-            seen.append(list(cols))
-        if sym is not None and name is not None and len(t) >= 90:
-            return pd.DataFrame({
-                "s": t[sym].astype(str).str.strip().str.replace(".", "-", regex=False),
-                "n": t[name].astype(str),
-                "gics": t[sec].astype(str) if sec is not None else "",
-            })
-    raise RuntimeError(f"no member table found on {page}; large tables had columns {seen}")
+    for url in (WIKI + page, "https://en.wikipedia.org/api/rest_v1/page/html/" + page):
+        r = requests.get(url, headers=UA, timeout=30)
+        try:
+            tables = pd.read_html(io.StringIO(r.text))
+        except ValueError:
+            tables = []
+        seen.append(f"{url} -> HTTP {r.status_code}, {len(r.text)} bytes, table rows {[len(t) for t in tables]}")
+        for t in tables:
+            if isinstance(t.columns, pd.MultiIndex):
+                t.columns = [" ".join(str(x) for x in c if "Unnamed" not in str(x)) for c in t.columns]
+            cols = {str(c).strip().lower(): c for c in t.columns}
+            sym = _pick(cols, "symbol", "ticker")
+            name = _pick(cols, "security", "company", "name")
+            sec = _pick(cols, "gics sector", "sector", "icb industry", "industry")
+            if sym is not None and name is not None and len(t) >= 80:
+                return pd.DataFrame({
+                    "s": t[sym].astype(str).str.strip().str.replace(".", "-", regex=False),
+                    "n": t[name].astype(str),
+                    "gics": t[sec].astype(str) if sec is not None else "",
+                })
+            if len(t) >= 80:
+                seen.append(f"  columns {list(cols)}")
+    raise RuntimeError(f"no member table found on {page}: " + " | ".join(seen))
 
 
 def universe():
