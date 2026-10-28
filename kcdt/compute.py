@@ -132,7 +132,7 @@ def fundamentals_row(f):
     )
 
 
-def build(px, meta, fund=None, fng=None):
+def build(px, meta, fund=None, fng=None, earn=None):
     """px: dict of OHLCV DataFrames. meta: DataFrame indexed by ticker with n, gics, ndx, sp500...
     fund: {ticker: cached Yahoo record}."""
     fund = fund or {}
@@ -189,6 +189,8 @@ def build(px, meta, fund=None, fng=None):
             mvp=int(mvp[t]), mvpm=int(up[t]), mvpv=_f((v15[t] / v15p[t] - 1) * 100, 0), mvpp=_f(ret[15][t], 1),
         )
         row.update(fundamentals_row(fund.get(t)))
+        if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market
+            row["edate"], row["etime"] = earn[t]
         stocks.append(row)
 
     # ---- breadth: all stocks and Nasdaq-100 only ----

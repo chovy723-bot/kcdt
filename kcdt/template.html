@@ -312,7 +312,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
       <div class="sechead"><h2 id="h-earn">未來兩星期業績</h2>
         <div class="controls"><button class="tog" id="e-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="e-scr" aria-pressed="false">符合 KC 條件</button><button class="tog" id="e-all" aria-pressed="false">全部</button></div></div>
       <div id="earnlist" style="display:grid;gap:14px"></div>
-      <p class="note">業績日嚟自 Yahoo Finance，公司有時會改期，以公司公佈為準。只包括有基本面數據嘅股票。</p>
+      <p class="note">業績日同時間嚟自 Nasdaq 業績日曆（冇嘅就用 Yahoo Finance）。盤前 = 美股開市前公佈，盤後 = 收市後公佈。公司有時會改期，以公司公佈為準。</p>
     </section>
   </main>
 
@@ -391,7 +391,8 @@ $('searchform').onsubmit = e => {
   const hit = BY[q] || BY[q.replace('.','-')] || S.find(s=>(s.n||'').toUpperCase().includes($('q').value.trim().toUpperCase()));
   if(hit){location.hash='s/'+hit.s;$('q').value='';$('q').blur()} else {$('q').setCustomValidity('股票池入面搵唔到');$('q').reportValidity()}
 };
-$('q').oninput = () => { $('q').setCustomValidity(''); if(BY[$('q').value.trim().toUpperCase()]) $('searchform').requestSubmit() };
+// Jump straight away only when a suggestion was picked (typing "T" must not open AT&T)
+$('q').oninput = e => { $('q').setCustomValidity(''); if((!e.inputType || e.inputType==='insertReplacementText') && BY[$('q').value.trim().toUpperCase()]) $('searchform').requestSubmit() };
 
 // ---------- router ----------
 const drawn = {};
@@ -554,11 +555,11 @@ function heat(){
       const r=el('rect',{x:t.x,y:t.y,width:Math.max(0,t.w-1),height:Math.max(0,t.h-1),fill,class:'tile'},svg);
       r.addEventListener('click',()=>{location.hash='s/'+t.s});
       el('title',{},r).textContent=`${t.s} ${t.n}\n${sgn(v,2)}%${t.mcap?`\n市值 ${f(t.mcap*10,0)} 億美元`:''}\n撳一下睇圖`;
-      const fs=Math.max(9,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
-      let fz=fs; while(fz>8 && t.s.length*fz*0.64+6>t.w) fz--;
-      if(t.s.length*fz*0.64+6<=t.w && t.h>fz*1.3){
+      const fs=Math.max(7,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
+      let fz=fs; while(fz>6 && t.s.length*fz*0.64+3>t.w) fz--;
+      if(t.s.length*fz*0.64+3<=t.w && t.h>fz*1.1){
         const a=el('text',{x:t.x+t.w/2,y:t.y+t.h/2-(t.h>fz*2.6?fz*0.15:-fz*0.35),'text-anchor':'middle',class:'t1','font-size':fz},svg); a.textContent=t.s;
-        if(t.h>fz*2.6){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
+        if(t.h>fz*2.6 && (sgn(v,2)+'%').length*fz*0.62*0.64+3<=t.w){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
       }
     });
   });
@@ -582,7 +583,7 @@ DRAW.ideas = () => {
 };
 
 // ---------- 選股器 ----------
-const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate'];
+const EXCL=['Consumer Cyclical','Consumer Defensive','Basic Materials','Financial Services','Healthcare','Real Estate','Industrials'];
 const FA=[ // KC's finviz set, on by default
   ['cap','市值 ≥ 3 億美元',s=>s.mcap!=null&&s.mcap>=0.3],
   ['sq','營收增長（季，按年）> 5%',s=>s.sq!=null&&s.sq>5],
@@ -593,7 +594,7 @@ const FA=[ // KC's finviz set, on by default
   ['beta','Beta > 1',s=>s.beta!=null&&s.beta>1],
   ['vol','成交量 > 5 萬',s=>s.vol>50000],
   ['px','股價 > 20 美元',s=>s.c>20],
-  ['sec','剔走消費、原材料、金融、醫療、房地產',s=>!EXCL.includes(s.sec)],
+  ['sec','剔走消費、原材料、金融、醫療、房地產、工業',s=>!EXCL.includes(s.sec)],
 ];
 const FB=[ // stronger conditions from KC's notes, off by default
   ['ndx','只睇 Nasdaq-100',s=>s.ndx],
@@ -635,7 +636,7 @@ function renderStocks(){
     <td class="r num">${f(s.inst,0)}</td><td class="r num">${f(s.beta,2)}</td><td class="r num">${s.pe!=null?f(s.pe,1):'—'}</td><td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td>
     <td title="${s.mvpm} 日收高 · 量 ${sgn(s.mvpv,0)}% · 價 ${sgn(s.mvpp)}%"><span class="mvp m${s.mvp}"></span></td>
     <td>${ttbar(s.tt)}</td>
-    <td class="num small">${s.edate||'—'}</td></tr>`).join('') || '<tr><td colspan="18" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
+    <td class="num small" style="white-space:nowrap">${edtxt(s)}</td></tr>`).join('') || '<tr><td colspan="18" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
 }
 DRAW.screener = () => {
   $('g3x').onchange=()=>{G3X=+$('g3x').value;on.add('g3');drawChips();renderStocks()};
@@ -650,6 +651,8 @@ DRAW.screener = () => {
 
 // ---------- 業績日曆 ----------
 const WD='日一二三四五六';
+const ETIME={bmo:'盤前',amc:'盤後'}, ETORD={bmo:0,amc:1};
+const edtxt = s => s.edate ? s.edate + (ETIME[s.etime] ? ' ' + ETIME[s.etime] : '') : '—';
 let earnSet='ndx';
 function earnings(){
   const today=ymd(nyNow()), end=new Date(nyNow()); end.setDate(end.getDate()+14); const endS=ymd(end);
@@ -657,8 +660,8 @@ function earnings(){
   const rows=S.filter(s=>s.edate && s.edate>=today && s.edate<=endS && pick(s));
   const days={}; rows.forEach(s=>(days[s.edate]=days[s.edate]||[]).push(s));
   $('earnlist').innerHTML = Object.keys(days).sort().map(d=>{
-    const dd=new Date(d+'T12:00:00'), list=days[d].sort((a,b)=>(b.mcap||0)-(a.mcap||0));
-    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table><thead><tr><th>代號</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td>${tk(s)}</td><td class="small">${s.n||''}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${pcell(s.eq)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+    const dd=new Date(d+'T12:00:00'), list=days[d].sort((a,b)=>((ETORD[a.etime]??2)-(ETORD[b.etime]??2))||(b.mcap||0)-(a.mcap||0));
+    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table><thead><tr><th>代號</th><th>時間</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td>${tk(s)}</td><td class="small" style="white-space:nowrap">${ETIME[s.etime]||'<span class="muted">未公佈</span>'}</td><td class="small">${s.n||''}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${pcell(s.eq)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
   }).join('') || '<div class="panel muted">未來兩星期冇呢組股票出業績。</div>';
 }
 DRAW.earnings = () => {
@@ -674,7 +677,7 @@ function showStock(t){
   $('s-tk').textContent=s.s; $('s-name').textContent=s.n||'';
   $('s-sec').textContent=[ZH[s.sec]||s.sec, s.ind].filter(Boolean).join(' · ');
   $('s-px').textContent=f(s.c); $('s-chg').innerHTML=`<span class="${cls(s.chg)}">${sgn(s.chg,2)}%</span> <span class="muted small">${D.asof}</span>`;
-  const tags=[s.ndx?'Nasdaq-100':null, passKC(s)?'符合 KC 條件':null, s.nh?'今日創 52 週新高':null, s.nl?'今日創 52 週新低':null, s.mvp===3?'MVP 3/3':null, s.edate?`業績日 ${s.edate}`:null].filter(Boolean);
+  const tags=[s.ndx?'Nasdaq-100':null, passKC(s)?'符合 KC 條件':null, s.nh?'今日創 52 週新高':null, s.nl?'今日創 52 週新低':null, s.mvp===3?'MVP 3/3':null, s.edate?`業績日 ${edtxt(s)}`:null].filter(Boolean);
   $('s-tags').innerHTML=tags.map(x=>`<span class="badge">${x}</span>`).join('');
   $('s-stats').innerHTML=[
     stat('RS 排名', `<span style="color:${rsColor(s.rsr)}">${s.rsr}</span>`), stat('距 52 週高', f(s.dh,1)+'%'),
@@ -687,7 +690,7 @@ function showStock(t){
     stat('營收增長（上財年）', s.sa!=null?sgn(s.sa)+'%':'—'), stat('機構持股', s.inst!=null?f(s.inst,0)+'%':'—'),
     stat('3 季按年最低（營收 / EPS）', pair(s.g3r,s.g3e)), stat('連續 2 年增長', s.yr==null?'—':s.yr?'<span class="up">係</span>':'唔係'),
     stat('預測 EPS（今年 / 明年）', pair(s.e0,s.e1)), stat('預測營收（今年 / 明年）', pair(s.r0,s.r1)),
-    stat('上市', s.ipo!=null?f(s.ipo,1)+' 年':'—'), stat('下次業績', s.edate||'—'),
+    stat('上市', s.ipo!=null?f(s.ipo,1)+' 年':'—'), stat('下次業績', edtxt(s)),
   ].join('');
   $('s-ttn').textContent=`${s.tt} / 5`;
   const c=s.c, ok=b=>b?'<span class="ok">✓</span>':'<span class="no">✗</span>';

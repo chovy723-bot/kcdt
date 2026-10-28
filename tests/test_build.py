@@ -58,7 +58,7 @@ def test_build():
     assert len(want) >= 100
     fng = dict(score=42.0, rating="fear", prev=40.1, w1=35.0, m1=55.2, y1=60.0, ts="2026-10-27",
                hist=[["2026-%02d-%02d" % (1 + i // 28, 1 + i % 28), 30 + (i * 7) % 50] for i in range(250)], live=True)
-    d = build(px, meta, fake_fund(want), fng)
+    d = build(px, meta, fake_fund(want), fng, {"S0001": ["2026-10-29", "amc"]})
     assert d["asof"] == "2026-10-27"
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 1105
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
@@ -69,6 +69,8 @@ def test_build():
     f0 = next(s for s in d["stocks"] if s.get("mcap") is not None)
     assert f0["g3e"] == 100.0 and f0["yr"] is True and f0["e0"] == 30.0 and f0["r1"] is None  # min of 1.5/0.7, 1.2/0.6, 1.0/0.5
     assert d["fng"]["score"] == 42.0
+    s1 = next(s for s in d["stocks"] if s["s"] == "S0001")
+    assert s1["edate"] == "2026-10-29" and s1["etime"] == "amc"
     assert len(d["tech"]["hist"]) == 60 and 0 <= d["tech"]["hist"][-1]["score"] <= 16
     assert set(d["panic"]) == {"on", "day"}
     pages = stock_pages(px, d["stocks"])

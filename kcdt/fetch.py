@@ -20,6 +20,8 @@ LISTS = {  # name -> Wikipedia page
     "sp600": "List_of_S%26P_600_companies",
 }
 UA = {"User-Agent": "Mozilla/5.0 KCDT"}
+NASDAQ_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+             "Chrome/124.0 Safari/537.36", "Accept": "application/json"}
 
 
 def _pick(cols, *keys):
@@ -59,10 +61,7 @@ def _members(page):
 
 def _nasdaq100():
     """Nasdaq's own list (Wikipedia's Nasdaq-100 page no longer carries the member table)."""
-    r = requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100",
-                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
-                     timeout=30)
+    r = requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100", headers=NASDAQ_UA, timeout=30)
     rows = r.json()["data"]["data"]["rows"]
     return pd.DataFrame({"s": [x["symbol"].strip().replace(".", "-") for x in rows],
                          "n": [x["companyName"] for x in rows], "gics": None})
@@ -245,10 +244,7 @@ def _money(x):
 
 
 def _nasdaq_quarters(t):
-    r = requests.get(f"https://api.nasdaq.com/api/company/{t.replace('-', '.')}/revenue?limit=1",
-                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"},
-                     timeout=30)
+    r = requests.get(f"https://api.nasdaq.com/api/company/{t.replace('-', '.')}/revenue?limit=1", headers=NASDAQ_UA, timeout=30)
     rows = ((r.json().get("data") or {}).get("revenueTable") or {}).get("rows") or []
     cols = ["value2", "value3", "value4"]  # fiscal years, newest first
     quarters, cur = [], None
@@ -298,6 +294,34 @@ def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache))
     return cache
+
+
+# ---- earnings calendar with timing (before the open / after the close) from Nasdaq ----
+
+EARN_TIME = {"time-pre-market": "bmo", "time-after-hours": "amc"}
+
+
+def earnings_calendar(days=15):
+    """{ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days."""
+    out = {}
+    start = pd.Timestamp.now(tz="America/New_York").normalize()
+    for d in pd.date_range(start, periods=days):
+        if d.weekday() >= 5:
+            continue
+        day = d.strftime("%Y-%m-%d")
+        try:
+            r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}", headers=NASDAQ_UA, timeout=30)
+            rows = ((r.json().get("data") or {}).get("rows")) or []
+        except Exception as e:
+            print("earnings calendar failed:", day, e)
+            continue
+        for row in rows:
+            sym = (row.get("symbol") or "").strip().replace(".", "-")
+            if sym and sym not in out:
+                out[sym] = [day, EARN_TIME.get(row.get("time"))]
+        time.sleep(0.5)
+    print(f"earnings calendar: {len(out)} companies in the next {days} days")
+    return out
 
 
 # ---- CNN Fear & Greed (no official API; keep the last good copy if it fails) ----
