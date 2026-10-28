@@ -468,7 +468,7 @@ DRAW.market = () => {
     const b=D.breadth[which], n=b.n||1, pc=x=>(x/n*100).toFixed(1);
     const rows=[['升','跌',b.adv,b.dec],['新高','新低',b.nh,b.nl],['50 日線上','下',b.a50,n-b.a50],['200 日線上','下',b.a200,n-b.a200]];
     $('bars').innerHTML = rows.map(([la,lb,a,c])=>{const tot=(a+c)||1;return `<div class="panel bb"><div class="lab"><span class="up"><b>${la}</b> <span class="num">${pc(a)}% (${a})</span></span><span class="down"><span class="num">(${c}) ${pc(c)}%</span> <b>${lb}</b></span></div><div class="track" role="img" aria-label="${la} ${a}，${lb} ${c}"><i style="width:${a/tot*100}%;background:var(--up)"></i><i style="width:${c/tot*100}%;background:var(--down)"></i></div></div>`}).join('');
-    $('bnote').textContent = which==='ndx'?`Nasdaq-100 ${b.n} 隻`:`全部 ${b.n} 隻`;
+    $('bnote').textContent = which==='ndx'?`Nasdaq-100 ${b.n} 隻`:`全部 ${b.n} 隻指數成份股（Nasdaq-100 + S&P 500/400/600，唔係全美股）`;
   };
   $('b-alln').textContent = D.breadth.all.n.toLocaleString('en-US');
   $('b-ndx').onclick=()=>{setPressed(['b-ndx','b-all'],'b-ndx');bars('ndx')};
