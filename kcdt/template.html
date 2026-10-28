@@ -1,5 +1,5 @@
 <title>KCDT 美股趨勢溫度計</title>
-<meta name="description" content="每日美股趨勢數據：市場溫度、市場寬度、Nasdaq-100 熱力圖、訊號、選股器、業績日曆同個股圖表。只供教育用途。">
+<meta name="description" content="每日美股趨勢數據：KCDT 趨勢分、市場寬度、Nasdaq-100 熱力圖、訊號、選股器、業績日曆同個股圖表。只供教育用途。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@600;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -97,7 +97,7 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .rebound .tag{display:inline-block;padding:1px 8px;border-radius:9px;font-weight:600;color:#fff;background:var(--flat)}
 .rebound .tag.on{background:var(--up)}
 .score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
-.zone{display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
+.zone{white-space:nowrap;flex-shrink:0;display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
 .scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
 .scale i{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
 .scalelab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
@@ -132,6 +132,14 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .heat .sl{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
 
 /* screener */
+.cfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cfbar select,.cfbar input,.cfgrid select,.cfgrid input{font:inherit;font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 16px}
+.cfgrid label{display:grid;grid-template-columns:7.5em 1fr;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.cfgrid label.set{color:var(--ink);font-weight:600}
+.cfgrid label.set select{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.cfgrid .rng{grid-column:2;display:flex;gap:4px;align-items:center}
+.cfgrid .rng input{width:100%;min-width:0}
 .filters{display:grid;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
@@ -196,7 +204,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   <!-- ===== 大市 ===== -->
   <main class="view" id="v-market">
     <section aria-labelledby="h-temp">
-      <div class="sechead"><h2 id="h-temp">市場溫度</h2><span class="muted small">溫度：8 個指標，每個 0 至 2 分，總分愈高愈危險</span></div>
+      <div class="sechead"><h2 id="h-temp">KCDT 趨勢分</h2><span class="muted small">8 個指標，綠燈 0、黃燈半格、紅燈一格，換算成 0–100，分數愈高風險愈大</span></div>
       <div class="panic" id="panic" role="status" hidden></div>
       <div class="hero">
         <div class="panel thermo" id="thermo"></div>
@@ -208,9 +216,9 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
           <p class="muted small" id="fngnote"></p>
         </div>
         <div class="panel wide" style="display:grid;gap:8px;align-content:start">
-          <div class="sechead"><h3>溫度：過去 60 個交易日</h3><div class="controls tsel"></div></div>
-          <div class="legend"><span><i style="background:var(--cool)"></i>0–4 健康</span><span><i style="background:var(--warm)"></i>5–9 警戒</span><span><i style="background:var(--hot)"></i>10–16 危險</span></div>
-          <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日溫度分數柱狀圖"></svg>
+          <div class="sechead"><h3>趨勢分：過去 60 個交易日</h3><div class="controls tsel"></div></div>
+          <div class="legend"><span><i style="background:var(--cool)"></i>0–30 健康</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 危險</span></div>
+          <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日趨勢分柱狀圖"></svg>
         </div>
       </div>
     </section>
@@ -238,10 +246,10 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     </section>
 
     <section aria-labelledby="h-ind">
-      <div class="sechead"><h2 id="h-ind">溫度指標</h2><div class="controls tsel"></div></div>
+      <div class="sechead"><h2 id="h-ind">趨勢分指標</h2><div class="controls tsel"></div></div>
       <div class="panel tablewrap">
         <table>
-          <thead><tr><th>#</th><th>指標</th><th class="r">今日數值</th><th class="r">黃燈</th><th class="r">紅燈</th><th>得分</th><th>60 日走勢</th></tr></thead>
+          <thead><tr><th>#</th><th>指標</th><th class="r">今日數值</th><th class="r">黃燈</th><th class="r">紅燈</th><th>燈號</th><th>60 日走勢</th></tr></thead>
           <tbody id="indtable"></tbody>
         </table>
       </div>
@@ -279,6 +287,19 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   <main class="view" id="v-screener" hidden>
     <section aria-labelledby="h-scr">
       <div class="sechead"><h2 id="h-scr">選股器</h2><span class="muted small" id="scrcount"></span></div>
+      <div class="panel filters">
+        <div class="sechead"><h3>自訂條件 <span class="muted small" id="cfn"></span></h3>
+          <div class="controls" id="cftabs"></div></div>
+        <div class="cfgrid" id="cfgrid"></div>
+        <div class="cfbar">
+          <select id="pre" aria-label="我的預設"></select>
+          <input id="pre-name" placeholder="改個名，例如：強勢科技" aria-label="預設名稱">
+          <button class="tog" id="pre-save">儲存目前條件</button>
+          <button class="tog" id="pre-del" hidden>刪除呢個預設</button>
+          <button class="tog" id="cf-clear">清除自訂條件</button>
+          <span class="muted small" id="pre-msg"></span>
+        </div>
+      </div>
       <div class="panel filters">
         <div class="sechead"><h3>KC 嘅條件 <span class="muted small">（撳一下可以開關）</span></h3><button class="tog" id="f-reset">還原預設</button></div>
         <div class="chips" id="chipsA"></div>
@@ -375,7 +396,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
   </main>
 
   <footer>
-    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。溫度門檻已用 2004 年至今嘅數據回測；分數係風險參考，唔係買賣訊號。</p>
+    <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻已用 2004 年至今嘅數據回測；分數係風險參考，唔係買賣訊號。</p>
     <p>每個交易日美股收市後自動更新（約香港時間早上 7 點）。數據來源：Yahoo Finance、Nasdaq、Wikipedia。</p>
   </footer>
 </div>
@@ -387,6 +408,7 @@ const f = (x, d=2) => x==null?'—':Number(x).toLocaleString('en-US',{minimumFra
 const sgn = (x, d=1) => x==null?'—':(x>0?'+':'') + f(x,d);
 const cls = x => x>0?'up':x<0?'down':'';
 const kvol = v => v==null?'—':v>=1e6?f(v/1e6,2)+'M':v>=1e3?f(v/1e3,0)+'K':String(v);
+const P100 = s => Math.round(s*100/16); // 8 rules × 0–2 points, shown on a 0–100 scale
 const zoneOf = s => s<=4?['健康','--cool']:s<=9?['警戒','--warm']:['危險','--hot'];
 const ZH = D.sector_zh || {};
 const NS='http://www.w3.org/2000/svg';
@@ -460,15 +482,15 @@ function lineChart(svg, series, {min,max,ticks,fmt,labels}){
 
 // ---------- 大市 ----------
 DRAW.market = () => {
-  const T = {spx:{n:'大市溫度',sub:'S&P 500',hist:D.hist,rules:D.rules}};
-  if(D.tech) T.ndx={n:'科技股溫度',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
+  const T = {spx:{n:'大市趨勢分',sub:'S&P 500',hist:D.hist,rules:D.rules}};
+  if(D.tech) T.ndx={n:'科技股趨勢分',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
   $('thermo').innerHTML = Object.values(T).map(t=>{const H=t.hist, last=H[H.length-1], prev=H[H.length-2], [zn,zc]=zoneOf(last.score);
     const reds=t.rules.filter(r=>last.p[r.k]===2).length, yel=t.rules.filter(r=>last.p[r.k]===1).length;
     return `<div class="temp1"><div class="row"><span class="eyebrow">${t.n} · ${t.sub}</span><span class="zone" style="background:var(${zc})">${zn}</span></div>
-      <div class="score"><b class="num">${last.score}</b><span>/ 16</span></div>
+      <div class="score"><b class="num">${P100(last.score)}</b><span>/ 100</span></div>
       <div class="scale"><i style="left:${last.score/16*100}%"></i></div>
-      <p class="muted small">前一日 ${prev.score} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
-    '<div class="scalelab"><span>0 健康</span><span>5 警戒</span><span>10 危險</span><span>16</span></div>' +
+      <p class="muted small">前一日 ${P100(prev.score)} 分 · ${reds} 個紅燈、${yel} 個黃燈</p></div>`}).join('') +
+    '<div class="scalelab"><span>0 健康</span><span>31 警戒</span><span>63 危險</span><span>100</span></div>' +
     (D.rebound ? `<div class="rebound"><div><span class="eyebrow">反彈確認 · QQQ</span> <span class="tag${D.rebound.on?' on':''}">${D.rebound.on?`是（第 ${D.rebound.day} 日）`:'否'}</span> <span class="muted small num">收市 ${D.rebound.close} · 20 日線 ${D.rebound.ma20}</span></div>
       <p class="muted small">QQQ 企喺向上嘅 20 日線之上。回測（2004–2026）：分數仍然喺警戒/危險區時，用佢做「最少揸一半」嘅參考，2016 年後每年回報 13.7%→15.0%、最大跌幅 -21.4%→-18.9%。但唔好一亮就全倉：2008 年熊市幾次假反彈，咁做最大跌幅會去到 -40%。只供參考，唔係買賣建議。</p></div>` : '');
   if(D.panic && D.panic.on){$('panic').hidden=false;$('panic').innerHTML=`<b>恐慌區（第 ${D.panic.day} 日）</b><span>VIX 同波幅雙紅燈。2004 年至今共 522 日，之後 3 個月 QQQ 平均 +9%，79% 時間上升；但恐慌頭 3 日之後仍有 36% 機會再跌 10%。只供參考，唔係買賣建議。</span>`}
@@ -480,10 +502,10 @@ DRAW.market = () => {
     const svg=$('scorechart'); svg.innerHTML=''; const W=640,Hh=200,L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
     const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
-    [0,4,9,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=v});
-    H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${h.score} 分`});
+    [0,5,10,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=P100(v)});
+    H.forEach((h,i)=>{const hgt=Math.max(2,y(0)-y(h.score));const r=el('rect',{x:L+i*bw+1,y:y(0)-hgt,width:Math.max(1,bw-2),height:hgt,rx:1.5,fill:`var(${zoneOf(h.score)[1]})`},svg);el('title',{},r).textContent=`${h.d}：${P100(h.score)} 分`});
     [0,Math.floor(n/3),Math.floor(2*n/3),n-1].forEach(i=>el('text',{x:L+i*bw+bw/2,y:Hh-8,'text-anchor':i===n-1?'end':i===0?'start':'middle'},svg).textContent=H[i].d);
-    $('indtable').innerHTML = rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${p} 分"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
+    $('indtable').innerHTML = rules.map((r,i)=>{const v=last.v[r.k],p=last.p[r.k];return `<tr><td class="num muted">${i+1}</td><td>${r.n}</td><td class="r num">${f(v)}${r.u}</td><td class="r num muted">${cmp(r)} ${r.y}${r.u}</td><td class="r num muted">${cmp(r)} ${r.r}${r.u}</td><td><span class="pts" aria-label="${['綠燈','黃燈','紅燈'][p]}"><i class="${p>=1?'on'+p:''}"></i><i class="${p===2?'on2':''}"></i></span></td><td>${spark(H.map(h=>h.v[r.k]),r)}</td></tr>`}).join('');
   };
 
   fearGreed();
@@ -654,7 +676,7 @@ function drawChips(){chips(FA,'chipsA');chips(FB,'chipsB');
   document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const k=b.dataset.f;on.has(k)?on.delete(k):on.add(k);b.setAttribute('aria-pressed',on.has(k));renderStocks()});
   $('g3lab').textContent=G3X}
 function renderStocks(){
-  const tests=[...FA,...FB].filter(x=>on.has(x[0])).map(x=>x[2]);
+  const tests=[...FA,...FB].filter(x=>on.has(x[0])).map(x=>x[2]).concat(Object.entries(CFS).map(([k,v])=>cfTest(k,v)).filter(Boolean));
   const rows=S.filter(s=>tests.every(t=>t(s))).sort((a,b)=>{const A=a[sortK],B=b[sortK];if(A==null)return 1;if(B==null)return -1;return (typeof A==='string'?A.localeCompare(B):(A-B))*sortDir});
   $('scrcount').textContent=`${S.length.toLocaleString('en-US')} 隻入面有 ${rows.length} 隻符合（${D.nfund} 隻有基本面數據）`;
   $('stockbody').innerHTML = rows.slice(0,200).map(s=>`<tr>
@@ -668,6 +690,89 @@ function renderStocks(){
     <td>${ttbar(s.tt)}</td>
     <td class="num small" style="white-space:nowrap">${edtxt(s)}</td></tr>`).join('') || '<tr><td colspan="18" class="muted">冇股票符合晒而家嘅條件，試下關咗其中一啲。</td></tr>';
 }
+// ---------- 自訂條件（finviz 式）----------
+// Each numeric option is ">x", "<x" or "a~b" (inclusive; either side may be blank). Categorical options are [label, test].
+const Store = { // browser copy now; the login build swaps this for the cloud
+  get(k,d){try{const v=localStorage.getItem('kcdt.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('kcdt.'+k,JSON.stringify(v))}catch(e){}}};
+const CFG=['基本','基本面','技術面'];
+const CF=[
+  ['idx','基本','指數',null,[['Nasdaq-100',s=>s.ndx],['指數成份股',s=>s.idx],['非指數成份股',s=>!s.idx]]],
+  ['sec','基本','行業',null,()=>[...new Set(S.map(s=>s.sec).filter(Boolean))].sort().map(x=>[ZH[x]||x,s=>s.sec===x])],
+  ['mcap','基本','市值（億美元）',s=>s.mcap==null?null:s.mcap*10,['>3','>20','>100','>500','>2000','3~20','20~100','<20']],
+  ['c','基本','股價（美元）',s=>s.c,['>12','>20','>50','>100','<20','<50']],
+  ['vol','基本','今日成交量',s=>s.vol,['>50000','>500000','>1000000','>5000000']],
+  ['av','基本','平均成交（50 日）',s=>s.av,['>100000','>500000','>1000000','>5000000']],
+  ['rvol','基本','相對成交',s=>s.rvol,['>1','>1.5','>2','>3','<1']],
+  ['edays','基本','業績日',null,[['未來 7 日內',s=>edIn(s,7)],['未來 14 日內',s=>edIn(s,14)],['14 日內冇業績',s=>!edIn(s,14)]]],
+  ['sq','基本面','營收增長（季）%',s=>s.sq,['>0','>5','>25','>50','>100','<0']],
+  ['eq','基本面','EPS 增長（季）%',s=>s.eq,['>0','>25','>50','>100','<0']],
+  ['sa','基本面','營收增長（年）%',s=>s.sa,['>0','>10','>25','>50']],
+  ['g3','基本面','3 季增長 %',s=>s.g3r==null||s.g3e==null?null:Math.min(s.g3r,s.g3e),['>25','>50','>100']],
+  ['e0','基本面','預測 EPS 今年 %',s=>s.e0,['>0','>15','>25','>50']],
+  ['e1','基本面','預測 EPS 明年 %',s=>s.e1,['>0','>15','>25','>50']],
+  ['pe','基本面','P/E',s=>s.pe!=null&&s.pe>0?s.pe:null,['<15','<25','<50','>50']],
+  ['fpe','基本面','預測 P/E',s=>s.fpe!=null&&s.fpe>0?s.fpe:null,['<15','<25','<50','>50']],
+  ['inst','基本面','機構持股 %',s=>s.inst,['>10','>30','>50','>70','<30']],
+  ['beta','基本面','Beta',s=>s.beta,['>1','>1.5','>2','<1','<0.5']],
+  ['rsr','技術面','RS',s=>s.rsr,['>50','>70','>80','>90','<30']],
+  ['tt','技術面','趨勢模板',s=>s.tt,['>3','>4','5~5']],
+  ['mvp','技術面','MVP 螞蟻',s=>s.mvp,['>1','>2','3~3']],
+  ['dh','技術面','距 52 週高 %',s=>s.dh,['>-5','>-10','>-15','>-25','<-30','<-50']],
+  ['d50','技術面','距 50 日線 %',s=>s.d50,['>0','<0','0~5','0~10','>10','>20']],
+  ['d200','技術面','距 200 日線 %',s=>s.d200,['>0','<0','0~10','>20','>50']],
+  ["x50","技術面","50 / 200 日線",null,[['50 日線較高',s=>s.x50],['50 日線較低',s=>!s.x50]]],
+  ['hl','技術面','52 週高低',null,[['今日創新高',s=>s.nh],['今日創新低',s=>s.nl]]],
+  ['chg','技術面','今日 %',s=>s.chg,['>0','>3','>5','<0','<-3','<-5']],
+  ['r5','技術面','1 週 %',s=>s.r5,['>0','>5','>10','<0','<-10']],
+  ['r21','技術面','1 個月 %',s=>s.r21,['>0','>10','>20','<0','<-10']],
+  ['r63','技術面','3 個月 %',s=>s.r63,['>0','>20','>50','<0','<-20']],
+  ['r126','技術面','6 個月 %',s=>s.r126,['>0','>25','>50','>100','<0']],
+  ['r252','技術面','1 年 %',s=>s.r252,['>0','>50','>100','<0']],
+];
+const edIn=(s,n)=>{if(!s.edate)return false;const t=ymd(nyNow()),e=new Date(nyNow());e.setDate(e.getDate()+n);return s.edate>=t&&s.edate<=ymd(e)};
+const CFK=Object.fromEntries(CF.map(x=>[x[0],x]));
+const cfOpts=x=>typeof x[4]==='function'?x[4]():x[4];
+const rng=e=>e[0]==='>'?[+e.slice(1),null]:e[0]==='<'?[null,+e.slice(1)]:e.split('~').map(v=>v===''?null:+v);
+const big=v=>Math.abs(v)>=1e6?(v/1e6)+' 百萬':Math.abs(v)>=1e4?(v/1e4)+' 萬':v;
+const rlab=e=>{const [a,b]=rng(e);return a!=null&&b!=null?(a===b?`${big(a)}`:`${big(a)} 至 ${big(b)}`):a!=null?`${big(a)} 以上`:`${big(b)} 以下`};
+let CFS={}, cfTab='基本';
+function cfTest(k,v){const x=CFK[k]; if(!x)return null;
+  if(!x[3]){const o=cfOpts(x)[+v]; return o?o[1]:null}
+  const [a,b]=rng(v); if(a==null&&b==null)return null;
+  return s=>{const n=x[3](s); return n!=null&&(a==null||n>=a)&&(b==null||n<=b)}}
+function drawCF(){
+  $('cftabs').innerHTML=[...CFG,'全部'].map(g=>`<button class="tog" data-g="${g}" aria-pressed="${g===cfTab}">${g}</button>`).join('');
+  $('cftabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfTab=b.dataset.g;drawCF()});
+  $('cfgrid').innerHTML=CF.filter(x=>cfTab==='全部'||x[1]===cfTab).map(x=>{const [k,,lab,get]=x, v=CFS[k]??'', opts=cfOpts(x);
+    const list=get?opts.map(o=>[o,rlab(o)]):opts.map((o,i)=>[String(i),o[0]]);
+    const custom=get&&v!==''&&!opts.includes(v), [a,b]=custom?rng(v):[null,null];
+    return `<label class="${v!==''?'set':''}"><span>${lab}</span><select data-cf="${k}"><option value="">任何</option>${list.map(([val,t])=>`<option value="${val}"${val===v?' selected':''}>${t}</option>`).join('')}${get?`<option value="*"${custom?' selected':''}>自訂範圍…</option>`:''}</select>
+      ${get?`<span class="rng"${custom?'':' hidden'}><input type="number" step="any" placeholder="最少" data-lo="${k}" value="${a??''}">–<input type="number" step="any" placeholder="最多" data-hi="${k}" value="${b??''}"></span>`:''}</label>`}).join('');
+  $('cfgrid').querySelectorAll('select').forEach(sel=>sel.onchange=()=>{const k=sel.dataset.cf;
+    if(sel.value==='*'){sel.nextElementSibling.hidden=false;sel.nextElementSibling.querySelector('input').focus();return}
+    if(sel.value==='')delete CFS[k]; else CFS[k]=sel.value; drawCF(); renderStocks()});
+  $('cfgrid').querySelectorAll('.rng input').forEach(inp=>inp.onchange=()=>{const k=inp.dataset.lo||inp.dataset.hi, box=inp.parentElement;
+    const lo=box.querySelector('[data-lo]').value, hi=box.querySelector('[data-hi]').value;
+    if(lo===''&&hi==='')delete CFS[k]; else CFS[k]=`${lo}~${hi}`; drawCF(); renderStocks()});
+  const n=Object.keys(CFS).length; $('cfn').textContent=n?`（用緊 ${n} 個）`:'（全部「任何」= 冇篩）';
+}
+// 我的預設: {name: {on, cf, g3x}}
+function drawPre(sel=''){const P=Store.get('presets',{});
+  $('pre').innerHTML='<option value="">我的預設…</option>'+Object.keys(P).sort().map(n=>`<option${n===sel?' selected':''}>${esc(n)}</option>`).join('');
+  $('pre-del').hidden=!sel}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function preMsg(t){$('pre-msg').textContent=t; clearTimeout(preMsg.t); preMsg.t=setTimeout(()=>$('pre-msg').textContent='',3000)}
+function initPre(){
+  drawPre();
+  $('pre').onchange=()=>{const n=$('pre').value, p=Store.get('presets',{})[n]; $('pre-del').hidden=!n; if(!p)return;
+    on.clear(); p.on.forEach(k=>on.add(k)); CFS={...p.cf}; G3X=p.g3x||50; $('g3x').value=String(G3X); $('pre-name').value=n;
+    drawCF(); drawChips(); renderStocks()};
+  $('pre-save').onclick=()=>{const n=$('pre-name').value.trim(); if(!n){$('pre-name').focus();preMsg('先改個名');return}
+    const P=Store.get('presets',{}); P[n]={on:[...on],cf:{...CFS},g3x:G3X}; Store.set('presets',P); drawPre(n); preMsg('已儲存（暫時儲喺呢部機）')};
+  $('pre-del').onclick=()=>{const n=$('pre').value, P=Store.get('presets',{}); delete P[n]; Store.set('presets',P); $('pre-name').value=''; drawPre(); preMsg('已刪除')};
+  $('cf-clear').onclick=()=>{CFS={}; drawCF(); renderStocks()};
+}
 DRAW.screener = () => {
   $('g3x').onchange=()=>{G3X=+$('g3x').value;on.add('g3');drawChips();renderStocks()};
   $('f-reset').onclick=()=>{on.clear();FA.forEach(x=>on.add(x[0]));drawChips();renderStocks()};
@@ -676,7 +781,8 @@ DRAW.screener = () => {
     document.querySelectorAll('#stocktable th button').forEach(x=>{x.dataset.active=x===b?'true':'false';x.textContent=x.textContent.replace(/ [▾▴]$/,'')});
     b.textContent += sortDir<0?' ▾':' ▴'; renderStocks();
   });
-  drawChips(); renderStocks();
+  if(!DRAW.screener.done){initPre();DRAW.screener.done=1}
+  drawCF(); drawChips(); renderStocks();
 };
 
 // ---------- 業績日曆 ----------
