@@ -40,6 +40,10 @@ def main():
     write_stock_pages(stock_pages(px, data["stocks"]))
     print(f"built {data['asof']}: score {data['hist'][-1]['score']}, "
           f"{len(data['stocks'])} stocks, {data['nfund']} with fundamentals")
+    have = lambda k: sum(1 for x in data["stocks"] if x.get(k) is not None)
+    tech = data["tech"]["hist"][-1]["score"] if data["tech"] else None
+    print(f"coverage: 3q revenue {have('g3r')}, 3q eps {have('g3e')}, 2y {have('yr')}, eps forecast {have('e0')}; "
+          f"tech score {tech}, panic {data['panic']}, fear & greed {(data['fng'] or {}).get('score')}")
 
 
 if __name__ == "__main__":
