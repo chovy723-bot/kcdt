@@ -43,7 +43,7 @@ def fake_fund(tickers, seed=2):
                       eq=float(rng.uniform(-0.5, 1.5)), pe=float(rng.uniform(5, 80)), ysec=None,
                       ipo=1.2e12, edate=1.8e9, revq=rev, epsq=[1.5, 1.2, 1.0, 0.8, 0.7], reva=[5e9, 4e9, 3e9],
                       epsa=[4.0, 3.0, 2.5], epsh=[1.5, 1.2, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4],
-                      efc=[0.3, 0.2], rfc=[0.25, None])
+                      efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9)
     return out
 
 
@@ -78,6 +78,8 @@ def test_build():
     assert len(d["tech"]["hist"]) == 60 and 0 <= d["tech"]["hist"][-1]["score"] <= 16
     assert set(d["panic"]) == {"on", "day"}
     assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
+    assert all(1 <= s["prsr"] <= 99 and "pd50" in s and "px50" in s for s in d["stocks"])
+    assert f0["fts"]
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
     assert len(pages) == 1105 and len(nv["d"]) == 260 and nv["d"][-1] == "2026-10-27"
@@ -97,11 +99,15 @@ if __name__ == "__main__":
                  {**ev(-3, "Fed Interest Rate Decision", None, "4.00%", "4.00%"), "note": "議息會議結果", "imp": 3}, {**ev(-3, "Redbook", "9.3%", None, "9.0%"), "note": "截至 10/24 嗰星期 · 大型零售商同店銷售按年"},
                  {**ev(20, "Core PCE Price Index", None, "0.3%", "0.2%"), "per": "按月", "ref": "2026 年 9 月", "imp": 3},
                  {**ev(20, "Core PCE Price Index", None, "3.1%", "3.0%"), "per": "按年", "ref": "2026 年 9 月", "imp": 3},
-                 {**ev(80, "CPI", None, "0.2%", "0.3%"), "per": "按月", "perx": True, "ref": "2026 年 10 月"},
+                 {**ev(80, "CPI", None, "0.2%", "0.3%"), "unconf": True, "ref": "2026 年 10 月"},
+                 {**ev(80, "CPI", None, "2.9%", "3.0%"), "unconf": True, "ref": "2026 年 10 月"},
+                 {**ev(-4, "FOMC Statement", None, None, None), "note": "議息會議結果", "imp": 3, "link": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm"},
+                 {**ev(-3.5, "FOMC Press Conference", None, None, None), "note": "議息會議後記者會", "imp": 3, "link": "https://www.federalreserve.gov/monetarypolicy/fomcpresconf20261028.htm"},
                  ev(30, "Initial Jobless Claims", "198K", "198K", "194K"), ev(70, "Natural Gas Storage", None, "75B", "77B")]
     d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets"),
                  dict(t="2026-10-28T08:00:00Z", title="MSFT Q1 2027 Earnings Call Transcript", link="https://example.com/b", src="Motley Fool", cat="Earnings"),
                  dict(t="2026-10-28T07:00:00Z", title="Chip stocks climb", link="https://example.com/c", src="Nasdaq", cat="Technology")]
+    d["news_t"] = d["built"] = (now - dt.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%MZ")
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")

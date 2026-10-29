@@ -362,12 +362,13 @@ def earnings_calendar(days=15):
 
 # ---- US economic calendar and market headlines (Nasdaq) ----
 
-def _et_to_utc(day, hhmm):
-    """The calendar's "gmt" column is really New York time (BoJ CPI shows at 01:00): return UTC ISO or None."""
+def _nasdaq_utc(day, hhmm):
+    """The calendar's "gmt" column is New York summer time (UTC-4) all year: NFP at 08:30 ET shows 08:30 in
+    October but 09:30 after the clocks go back, so add 4 hours rather than converting from New York time."""
     if not (hhmm or "").strip():
         return None
     try:
-        return pd.Timestamp(f"{day} {hhmm.strip()}", tz="America/New_York").tz_convert("UTC").strftime("%Y-%m-%dT%H:%MZ")
+        return (pd.Timestamp(f"{day} {hhmm.strip()}") + pd.Timedelta(hours=4)).strftime("%Y-%m-%dT%H:%MZ")
     except Exception:
         return None
 
@@ -389,7 +390,7 @@ def economic_calendar(today=None, labels_file=None):
         except Exception as e:
             print("economic calendar failed:", day, e)
             continue
-        out += [dict(d=day, u=_et_to_utc(day, x.get("gmt")), e=clean(x.get("eventName")), a=clean(x.get("actual")),
+        out += [dict(d=day, u=_nasdaq_utc(day, x.get("gmt")), e=clean(x.get("eventName")), a=clean(x.get("actual")),
                      c=clean(x.get("consensus")), p=clean(x.get("previous")))
                 for x in rows if x.get("country") == "United States"]
         time.sleep(0.5)
@@ -406,8 +407,7 @@ def economic_calendar(today=None, labels_file=None):
         path.parent.mkdir(exist_ok=True)
         path.write_text(json.dumps(memory, ensure_ascii=False, indent=1, sort_keys=True))
     print(f"economic calendar: {len(out)} US releases, {sum(1 for r in out if r.get('ref'))} with a period, "
-          f"{sum(1 for r in out if r.get('per') and not r.get('perx'))} with m/m-y/y known, "
-          f"{sum(1 for r in out if r.get('perx'))} guessed")
+          f"{sum(1 for r in out if r.get('per'))} with m/m-y/y known, {sum(1 for r in out if r.get('unconf'))} unconfirmed")
     return out
 
 
