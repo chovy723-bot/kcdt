@@ -8,13 +8,11 @@ jobs:
     steps:
       - run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-          for w in thisweek nextweek lastweek; do
-            echo "== ff $w"; curl -s -m 30 -A "$UA" "https://nfs.faireconomy.media/ff_calendar_$w.json" -o ff.json -w "%{http_code} %{size_download}\n"
+          for d in 2025-12-06 2025-12-17 2026-01-10 2026-02-14 2026-03-07 2026-03-14 2026-10-03 2026-10-15 2026-10-29 2026-11-07 2026-11-11 2026-11-14; do
+            echo "== $d"; curl -s -m 30 -A "$UA" -H "Accept: application/json" -H "Origin: https://www.nasdaq.com" -H "Referer: https://www.nasdaq.com/" "https://api.nasdaq.com/api/calendar/economicevents?date=$d" -o e.json
             python3 -c "
           import json
-          try: d=json.load(open('ff.json'))
-          except Exception as e: print('bad', open('ff.json').read()[:200]); raise SystemExit
-          us=[x for x in d if x.get('country')=='USD']; print(len(d), len(us), list(d[0].keys()) if d else None)
-          for x in us[:80]: print(json.dumps(x))
+          d=json.load(open('e.json')); rows=((d.get('data') or {}).get('rows')) or []
+          for x in rows: print(x.get('gmt'), '|', x.get('country'), '|', x.get('eventName'), '|', x.get('actual'))
           "
           done
