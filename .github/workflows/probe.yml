@@ -6,21 +6,15 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
-      - run: pip install -q requests
       - run: |
-          python - <<'PY'
-          import requests, json
-          UA={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36","Accept":"application/json"}
-          for day in ["2026-10-27","2026-10-28","2026-10-29","2026-10-30"]:
-              r=requests.get(f"https://api.nasdaq.com/api/calendar/economicevents?date={day}",headers=UA,timeout=30).json()
-              rows=(r.get("data") or {}).get("rows") or []
-              print("== econ", day, len(rows), "keys", list(rows[0].keys()) if rows else None)
-              for x in rows:
-                  if x.get("country")=="United States": print(json.dumps(x, ensure_ascii=False))
-          for day in ["2026-10-28","2026-10-29"]:
-              r=requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}",headers=UA,timeout=30).json()
-              d=r.get("data") or {}
-              print("== earn", day, {k:v for k,v in d.items() if k!="rows"}); print(json.dumps((d.get("rows") or [])[:2]))
-          PY
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          for w in thisweek nextweek lastweek; do
+            echo "== ff $w"; curl -s -m 30 -A "$UA" "https://nfs.faireconomy.media/ff_calendar_$w.json" -o ff.json -w "%{http_code} %{size_download}\n"
+            python3 -c "
+          import json
+          try: d=json.load(open('ff.json'))
+          except Exception as e: print('bad', open('ff.json').read()[:200]); raise SystemExit
+          us=[x for x in d if x.get('country')=='USD']; print(len(d), len(us), list(d[0].keys()) if d else None)
+          for x in us[:80]: print(json.dumps(x))
+          "
+          done
