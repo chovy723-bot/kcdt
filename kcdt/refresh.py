@@ -19,7 +19,7 @@ def main():
         data["news"], data["news_t"] = news, now_utc()
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     (OUT / "index.html").write_text(render(data), encoding="utf-8")
-    print(f"refreshed: {len(econ)} econ rows, {len(news)} headlines")
+    print(f"refreshed: {len(econ)} econ rows, {len(news)} headlines (empty = kept the last good copy)")
 
 
 if __name__ == "__main__":

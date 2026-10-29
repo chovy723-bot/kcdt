@@ -90,7 +90,7 @@ def test_build():
 
 
 if __name__ == "__main__":
-    import pathlib
+    import json, pathlib
     from kcdt import __main__ as m
     d, pages = test_build()
     import datetime as dt
@@ -113,9 +113,15 @@ if __name__ == "__main__":
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
+    (m.OUT / "data.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    # The intraday refresh rebuilds the page from data.json; an empty fetch keeps the last good copy
+    from kcdt import refresh
+    refresh.economic_calendar, refresh.headlines = (lambda **k: []), (lambda: [])
+    refresh.main()
+    assert json.loads((m.OUT / "data.json").read_text())["econ"] == d["econ"]
     m.write_stock_pages(pages)
     # A past day in the history folder plus today's, so the 歷史 view has two dates to pick
-    import tempfile, json
+    import tempfile
     hist = pathlib.Path(tempfile.mkdtemp())
     old = m.snapshot(d)
     past = (dt.date.fromisoformat(d["asof"]) - dt.timedelta(days=4)).isoformat()
