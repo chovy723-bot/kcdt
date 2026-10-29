@@ -2,9 +2,9 @@
 
 Nasdaq's calendar gives neither, so:
 - m/m, y/y and q/q come from ForexFactory's weekly calendar, whose titles say it ("Core PCE Price Index m/m"),
-  matched to Nasdaq's rows by release time and forecast. ForexFactory only publishes the current week, so each
-  confirmed answer is remembered by event name and row position (cache/econ_labels.json) and reused for later
-  weeks; only a pair never seen before falls back to "smaller = m/m", flagged as a guess.
+  matched to Nasdaq's rows by release time and forecast. ForexFactory only publishes the current week, so the
+  numbers of confirmed rows are remembered (cache/econ_labels.json): a later release's "previous" is the
+  confirmed actual. Rows that still can't be told apart are flagged unconfirmed, never guessed.
 - The reference period follows each release's fixed schedule (CPI in November covers October, GDP covers
   the last finished quarter, jobless claims cover the week to last Saturday). Events with no period
   (rate decisions, auctions, speeches) get a short note on what they are instead.
@@ -29,6 +29,21 @@ NOTES = [
     (r"Redbook", lambda d: f"截至 {_back(d, 5).month}/{_back(d, 5).day} 嗰星期 · 大型零售商同店銷售按年"),
     (r"ADP.*Weekly", "ADP 每週就業估算（4 星期平均）"),
 ]
+
+
+# Official pages for events with no number, by the New York release date
+LINKS = [
+    (r"FOMC Statement", "https://www.federalreserve.gov/newsevents/pressreleases/monetary{ymd}a.htm"),
+    (r"FOMC Press Conference", "https://www.federalreserve.gov/monetarypolicy/fomcpresconf{ymd}.htm"),
+    (r"FOMC.*Minutes", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"),
+]
+
+
+def event_link(name, day):
+    for pat, url in LINKS:
+        if re.search(pat, name or "", re.I):
+            return url.format(ymd=day.replace("-", ""))
+    return None
 
 
 def _back(d, weekday):
@@ -107,22 +122,24 @@ def forexfactory():
     return out
 
 
-# Row orders seen on Nasdaq and confirmed against ForexFactory (2026-10-27 week); the cache adds more each week
-SEED = {"Core PCE Price Index": {"0": "按月", "1": "按年"}, "House Price Index": {"0": "按月", "1": "按年"}}
-
-
 def label(rows, ff, memory=None):
-    """Add ref (period covered) or note (what the event is), per (按月/按年/按季), perx (per is a guess)
-    and imp (3 high, 2 medium) in place.
+    """Add ref (period covered) or note (what the event is), per (按月/按年/按季), unconf (a % row whose
+    按月/按年 couldn't be confirmed) and imp (3 high, 2 medium) in place.
 
-    memory: {event name: {row position within that day's same-name rows: per}}, updated with what
-    ForexFactory confirms and used for weeks it doesn't cover."""
+    memory: {event name: {"v": {number: per}}}, the numbers of rows ForexFactory confirmed. A release's
+    "previous" is the last release's actual, so next month's rows are told apart by that number. Nasdaq's
+    row order can't be used: Core CPI came m/m first in February 2026 and y/y first in October."""
     memory = {} if memory is None else memory
-    for name, known in SEED.items():
-        memory.setdefault(name, dict(known))
+    for name in list(memory):  # drop the old row-order format
+        if name != name.lower() or not isinstance(memory[name], dict) or not isinstance(memory[name].get("v"), dict):
+            del memory[name]
     for r in rows:
         r["note"] = event_note(r.get("e"), r["d"])
         r["ref"] = None if r["note"] else ref_period(r.get("e"), r["d"])
+        if event_link(r.get("e"), r["d"]):
+            r["link"] = event_link(r.get("e"), r["d"])
+    key = lambda r: (r.get("e") or "").lower()  # Nasdaq writes "PCE Price index" (y/y) and "PCE price index" (m/m)
+    pct = lambda r: (r.get("c") or r.get("p") or r.get("a") or "").endswith("%")
     # 1) ForexFactory: same release time, and the forecast (or previous) is the same number
     for r in rows:
         best = None
@@ -135,40 +152,40 @@ def label(rows, ff, memory=None):
                 break
         if best:
             m = re.search(r"\b(m/m|y/y|q/q)\b", best["title"])
-            if m and (r.get("c") or r.get("p") or "").endswith("%"):
+            if m and pct(r):
                 r["per"] = PER[m.group(1)]
             r["imp"] = {"High": 3, "Medium": 2}.get(best["impact"])
+    # 2) Remembered numbers: this row's previous was a confirmed row's actual
+    for r in rows:
+        if not r.get("per") and pct(r) and r.get("p"):
+            known = memory.get(key(r), {}).get("v", {}).get(r["p"])
+            if known in PER.values():
+                r["per"] = known
     groups = {}
     for r in rows:
-        groups.setdefault((r["d"], r.get("e")), []).append(r)
-    pct = lambda r: (r.get("c") or r.get("p") or "").endswith("%")
-    # 2) A same-name pair where one side is confirmed: the other is the opposite
+        groups.setdefault((r["d"], key(r)), []).append(r)
+    # 3) A same-name % pair where one side is known: the other is the opposite
     for g in groups.values():
         if len(g) == 2 and all(pct(x) for x in g):
             a, b = g
             for x, y in ((a, b), (b, a)):
                 if x.get("per") in ("按月", "按年") and not y.get("per"):
                     y["per"] = "按年" if x["per"] == "按月" else "按月"
-    # 3) Remember what is confirmed; reuse it where ForexFactory has nothing (next week)
-    for (_, name), g in groups.items():
-        for i, r in enumerate(g):
-            if r.get("per") and pct(r):
-                memory.setdefault(name, {})[str(i)] = r["per"]
-    for (_, name), g in groups.items():
-        for i, r in enumerate(g):
-            known = memory.get(name, {}).get(str(i))
-            if known and not r.get("per") and pct(r):
-                r["per"] = known
-    # 4) Never seen: guess a same-name % pair by size
+            if a.get("imp") or b.get("imp"):
+                a["imp"] = b["imp"] = max(a.get("imp") or 0, b.get("imp") or 0) or None
+    # 4) Remember the numbers of every known row; a number seen in both 按月 and 按年 rows is useless
+    for r in rows:
+        if r.get("per") and pct(r):
+            vals = memory.setdefault(key(r), {"v": {}})["v"]
+            for k in ("a", "p"):
+                if r.get(k):
+                    vals[r[k]] = r["per"] if vals.get(r[k]) in (None, r["per"]) else "?"
+            while len(vals) > 24:
+                vals.pop(next(iter(vals)))
+    # 5) A % row that comes in more than one version but still has no label: say so instead of guessing
     for g in groups.values():
-        if len(g) != 2 or not all(pct(x) for x in g):
-            continue
-        a, b = g
-        if not a.get("per") and not b.get("per"):
-            va, vb = (abs(_num(x.get("p") or x.get("c")) or 0) for x in g)
-            if va != vb:
-                small, big = (a, b) if va < vb else (b, a)
-                small["per"], big["per"], small["perx"], big["perx"] = "按月", "按年", True, True
-        if a.get("imp") or b.get("imp"):
-            a["imp"] = b["imp"] = max(a.get("imp") or 0, b.get("imp") or 0) or None
+        if len(g) > 1:
+            for r in g:
+                if pct(r) and not r.get("per"):
+                    r["unconf"] = True
     return rows

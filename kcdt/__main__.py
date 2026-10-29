@@ -2,6 +2,7 @@
 import json
 import pathlib
 import sys
+from datetime import datetime, timezone
 
 from .compute import build, stock_pages, wants_fundamentals
 from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_prices, fundamentals, headlines,
@@ -9,6 +10,10 @@ from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_pric
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "site"
+
+
+def now_utc():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
 
 
 def render(data):
@@ -34,11 +39,14 @@ def main():
     want = wants_fundamentals(px, meta)
     fund = fundamentals(want, ROOT / "cache" / "fundamentals.json")
     nq = nasdaq_quarters(want, ROOT / "cache" / "nasdaq_quarters.json")
-    fund = {t: {**rec, **nq.get(t, {})} for t, rec in fund.items()}
+    fund = {t: {**rec, **nq.get(t, {}), "_ts": max(rec.get("_ts", 0), nq.get(t, {}).get("_ts", 0))}
+            for t, rec in fund.items()}
     data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earnings_calendar())
-    data["econ"], data["news"] = economic_calendar(labels_file="cache/econ_labels.json"), headlines()
+    data["econ"] = economic_calendar(labels_file="cache/econ_labels.json")
+    data["news"], data["news_t"] = headlines(), now_utc()
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
+    data["built"] = now_utc()
     OUT.mkdir(exist_ok=True)
     (OUT / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     (OUT / "index.html").write_text(render(data), encoding="utf-8")

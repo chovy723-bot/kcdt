@@ -53,35 +53,51 @@ def test_econ_labels():
           dict(t="2026-10-29T12:30Z", title="Advance GDP q/q", impact="High", f="3.2%", p="1.5%")]
     label(rows, ff)
     pce_m, pce_y, gdp, cpi_m, cpi_y = rows
-    assert (pce_m["per"], pce_y["per"]) == ("按月", "按年") and not pce_m.get("perx") and pce_m["imp"] == pce_y["imp"] == 3
-    assert pce_m["ref"] == "2026 年 9 月"
+    assert (pce_m["per"], pce_y["per"]) == ("按月", "按年") and pce_m["imp"] == pce_y["imp"] == 3
+    assert pce_m["ref"] == "2026 年 9 月" and not pce_m.get("unconf")
     assert gdp["per"] == "按季（年率）" and gdp["ref"] == "2026 年第 3 季"
-    assert (cpi_m["per"], cpi_y["per"], cpi_m["perx"]) == ("按月", "按年", True) and cpi_m["ref"] == "2026 年 10 月"
+    # never confirmed: no guess, flagged
+    assert not cpi_m.get("per") and cpi_m["unconf"] and cpi_y["unconf"] and cpi_m["ref"] == "2026 年 10 月"
 
 
 def test_econ_labels_remembered_and_notes():
     from kcdt.econ import label
-    memory = {}
-    week1 = [dict(d="2026-10-14", u="2026-10-14T12:30Z", e="CPI", c="0.2%", p="0.3%"),
-             dict(d="2026-10-14", u="2026-10-14T12:30Z", e="CPI", c="2.9%", p="3.0%")]
-    label(week1, [dict(t="2026-10-14T12:30Z", title="CPI y/y", impact="High", f="2.9%", p="3.0%")], memory)
-    assert [r["per"] for r in week1] == ["按月", "按年"] and memory["CPI"] == {"0": "按月", "1": "按年"}
-    # a later week with no ForexFactory rows: the remembered order is used, not a guess
-    week2 = [dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="0.4%", p="0.2%"),
-             dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="0.1%", p="2.9%")]
+    memory = {"CPI": {"0": "按月"}}  # old row-order format is dropped
+    week1 = [dict(d="2026-10-15", u="2026-10-15T12:30Z", e="CPI", a="0.6%", c="0.4%", p="0.3%"),
+             dict(d="2026-10-15", u="2026-10-15T12:30Z", e="CPI", a="3.7%", c="3.6%", p="3.0%")]
+    label(week1, [dict(t="2026-10-15T12:30Z", title="CPI y/y", impact="High", f="3.6%", p="3.0%")], memory)
+    assert [r["per"] for r in week1] == ["按月", "按年"] and "CPI" not in memory
+    assert memory["cpi"]["v"]["0.6%"] == "按月" and memory["cpi"]["v"]["3.7%"] == "按年"
+    # next month, no ForexFactory and Nasdaq lists y/y first: the previous values tell them apart
+    week2 = [dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="3.5%", p="3.7%"),
+             dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="0.2%", p="0.6%")]
     label(week2, [], memory)
-    assert [r["per"] for r in week2] == ["按月", "按年"] and not any(r.get("perx") for r in week2)
+    assert [r["per"] for r in week2] == ["按年", "按月"] and not any(r.get("unconf") for r in week2)
+    # Nasdaq spells the two PCE headline rows differently; they still pair up
+    pce = [dict(d="2026-10-30", u="2026-10-30T12:30Z", e="PCE Price index", c="2.9%", p="2.8%"),
+           dict(d="2026-10-30", u="2026-10-30T12:30Z", e="PCE price index", c="0.3%", p="0.3%")]
+    label(pce, [dict(t="2026-10-30T12:30Z", title="PCE Price Index m/m", impact="Medium", f="0.3%", p="0.3%")], {})
+    assert [r["per"] for r in pce] == ["按年", "按月"]
     notes = [dict(d="2026-10-28", u="2026-10-28T18:00Z", e="Fed Interest Rate Decision", c="4.00%", p="4.00%"),
              dict(d="2026-10-27", u="2026-10-27T17:00Z", e="2-Year Note Auction", c=None, p="4.787%"),
              dict(d="2026-10-27", u="2026-10-27T12:55Z", e="Redbook", c=None, p="9.0%"),
-             dict(d="2026-10-29", u="2026-10-29T20:30Z", e="Fed's Balance Sheet", c=None, p="6,754B")]
+             dict(d="2026-10-29", u="2026-10-29T20:30Z", e="Fed's Balance Sheet", c=None, p="6,754B"),
+             dict(d="2026-10-28", u="2026-10-28T18:30Z", e="FOMC Press Conference", c=None, p=None)]
     label(notes, [], {})
     assert [r["note"] for r in notes] == ["議息會議結果", "國債拍賣 · 數字係得標息率",
-                                         "截至 10/24 嗰星期 · 大型零售商同店銷售按年", "截至 10/28（星期三）"]
+                                         "截至 10/24 嗰星期 · 大型零售商同店銷售按年", "截至 10/28（星期三）", "議息會議後記者會"]
+    assert notes[4]["link"].endswith("fomcpresconf20261028.htm")
+
+
+def test_nasdaq_time_is_utc_minus_4_all_year():
+    # NFP is 08:30 New York time: Nasdaq shows 08:30 in October (EDT) and 09:30 in November (EST)
+    assert fetch._nasdaq_utc("2026-10-02", "08:30") == "2026-10-02T12:30Z"
+    assert fetch._nasdaq_utc("2026-11-06", "09:30") == "2026-11-06T13:30Z"  # = 21:30 Hong Kong
 
 
 if __name__ == "__main__":
     test_economic_calendar_dates_rows_one_day_back()
     test_econ_labels()
     test_econ_labels_remembered_and_notes()
+    test_nasdaq_time_is_utc_minus_4_all_year()
     print("ok")

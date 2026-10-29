@@ -156,8 +156,9 @@ def build(px, meta, fund=None, fng=None, earn=None):
     last, prev = c.iloc[-1], c.iloc[-2]
     chg = (last / prev - 1) * 100
     ret = {k: (last / c.iloc[-1 - k] - 1) * 100 for k in (5, 15, 21, 63, 126, 252)}
-    rs = 0.4 * ret[63] + 0.2 * ret[126] + 0.2 * ret[252] + 0.2 * ret[21]
-    rs_rank = (rs.rank(pct=True) * 98 + 1).round()
+    rs_rank = _rs_rank(c, -1)
+    rs_prev = _rs_rank(c, -2)  # yesterday's rank, for 今日有咩變咗
+    ma50p, ma200p = ma50.iloc[-2], ma200.iloc[-2]
     avgv50 = v.rolling(50).mean().iloc[-1]
     rvol = v.iloc[-1] / avgv50
     new_high = h.iloc[-1] >= hi252.iloc[-2]
@@ -192,7 +193,14 @@ def build(px, meta, fund=None, fng=None, earn=None):
             tt=int(sum(bool(x) for x in tt)), rsr=int(rs_rank[t]),
             mvp=int(mvp[t]), mvpm=int(up[t]), mvpv=_f((v15[t] / v15p[t] - 1) * 100, 0), mvpp=_f(ret[15][t], 1),
         )
+        # yesterday's technical state: the page works out what changed today
+        if not pd.isna(prev[t]) and not pd.isna(ma200p[t]):
+            row.update(pd50=_f((prev[t] / ma50p[t] - 1) * 100, 1), pd200=_f((prev[t] / ma200p[t] - 1) * 100, 1),
+                       px50=bool(ma50p[t] > ma200p[t]), pvol=int(v[t].iloc[-2]) if not pd.isna(v[t].iloc[-2]) else 0,
+                       prsr=None if pd.isna(rs_prev[t]) else int(rs_prev[t]))
         row.update(fundamentals_row(fund.get(t)))
+        if fund.get(t, {}).get("_ts"):
+            row["fts"] = pd.Timestamp(fund[t]["_ts"], unit="s").strftime("%Y-%m-%d")
         if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market
             row["edate"], row["etime"] = earn[t]
             row["econf"] = True  # on Nasdaq's dated calendar; Yahoo-only dates are estimates
@@ -257,6 +265,13 @@ def build(px, meta, fund=None, fng=None, earn=None):
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
         sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng,
         nfund=sum(1 for s in stocks if s.get("mcap") is not None))
+
+
+def _rs_rank(c, i):
+    """RS on session i: 3-month return x40% + 1-, 6- and 12-month x20% each, ranked 1-99 across the pool."""
+    ret = lambda k: (c.iloc[i] / c.iloc[i - k] - 1) * 100
+    rs = 0.4 * ret(63) + 0.2 * ret(126) + 0.2 * ret(252) + 0.2 * ret(21)
+    return (rs.rank(pct=True) * 98 + 1).round()
 
 
 def _panic(ind):
