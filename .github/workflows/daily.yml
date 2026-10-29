@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write  # push the day's snapshot to the history branch
   pages: write
   id-token: write
   issues: write
@@ -32,7 +32,34 @@ jobs:
           path: cache
           key: fundamentals-${{ github.run_id }}
           restore-keys: fundamentals-
+      # Each day's snapshot is kept on the history branch, so past days show what was known then
+      - name: Load past snapshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads origin history >/dev/null; then
+            git clone --quiet --depth 1 --branch history "$url" hist
+          else
+            git init --quiet -b history hist && git -C hist remote add origin "$url"
+          fi
       - run: python -m kcdt
+        env:
+          KCDT_HISTORY: hist
+      - name: Save today's snapshot
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd hist
+          git add -A
+          git -c user.name="kcdt-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "Snapshot $(ls 20*.json | tail -1)" || exit 0
+          git push --quiet origin history
+      # The intraday econ refresh (econ.yml) starts from this build
+      - uses: actions/cache/save@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+          key: site-${{ github.run_id }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

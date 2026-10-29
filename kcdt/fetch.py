@@ -217,6 +217,7 @@ def _one(t):
     q = tk.quarterly_income_stmt
     if q is not None and not q.empty:
         q = q[sorted(q.columns, reverse=True)]  # newest first
+        rec["qend"] = pd.Timestamp(q.columns[0]).strftime("%Y-%m-%d")  # end of the latest reported fiscal quarter
         rec["revq"] = _row_values(q, ["Total Revenue", "Operating Revenue"])[:8]
         rec["epsq"] = _row_values(q, ["Diluted EPS", "Basic EPS"])[:8]
     a = tk.income_stmt
@@ -240,18 +241,36 @@ def _one(t):
     return rec
 
 
+AFTER_REPORT = 20 * 3600  # Yahoo usually has the new quarter by the next day's run
+
+
+def reported_since(rec, now):
+    """True when the company reported after this record was fetched (so its revenue/EPS are a quarter old)."""
+    e = rec.get("edate")
+    return bool(e) and e + AFTER_REPORT <= now and rec.get("_ts", 0) < e + AFTER_REPORT
+
+
 def fundamentals(tickers, cache_file, max_age_days=7, max_calls=250, pause=0.6):
-    """Refresh stale entries for `tickers` (old schema first, then oldest), keep the rest from the cache."""
+    """Refresh stale entries for `tickers`: companies that just reported first, then old schema, then oldest."""
     path = pathlib.Path(cache_file)
     cache = json.loads(path.read_text()) if path.exists() else {}
     now = time.time()
     age = lambda t: (cache.get(t, {}).get("_v", 1) >= SCHEMA, cache.get(t, {}).get("_ts", 0))
-    stale = sorted((t for t in tickers if age(t)[0] is False or now - age(t)[1] > max_age_days * 86400), key=age)
+    just = {t for t in tickers if reported_since(cache.get(t, {}), now)}
+    stale = sorted((t for t in tickers if t in just or age(t)[0] is False or now - age(t)[1] > max_age_days * 86400),
+                   key=lambda t: (t not in just, age(t)))
+    print(f"fundamentals: {len(just)} reported since last fetch, refreshing those first")
     done = fails = 0
     for t in stale[:max_calls]:
         try:
+            old = cache.get(t, {})
             rec = _one(t)
             rec["_ts"] = now
+            # remember the last report date (Yahoo moves earningsTimestamp on to the next report)
+            past = old.get("edate") if old.get("edate") and old["edate"] <= now else None
+            rec["erep"] = past if past and (not rec.get("edate") or rec["edate"] > now) else old.get("erep")
+            if rec.get("edate") and rec["edate"] <= now:
+                rec["erep"] = rec["edate"]
             cache[t] = rec
             done += 1
         except Exception as e:
@@ -307,12 +326,15 @@ def _nasdaq_quarters(t):
     return {"nrev": [x[0] for x in out], "neps": [x[1] for x in out]}
 
 
-def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=4):
+def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=4, reports=None):
+    """reports: {ticker: last report time}; anything that reported after its cached copy is refreshed first."""
     path = pathlib.Path(cache_file)
     cache = json.loads(path.read_text()) if path.exists() else {}
     now = time.time()
-    stale = sorted((t for t in tickers if now - cache.get(t, {}).get("_ts", 0) > max_age_days * 86400),
-                   key=lambda t: cache.get(t, {}).get("_ts", 0))[:max_calls]
+    reports = reports or {}
+    just = {t for t in tickers if reports.get(t) and cache.get(t, {}).get("_ts", 0) < reports[t] + AFTER_REPORT <= now}
+    stale = sorted((t for t in tickers if t in just or now - cache.get(t, {}).get("_ts", 0) > max_age_days * 86400),
+                   key=lambda t: (t not in just, cache.get(t, {}).get("_ts", 0)))[:max_calls]
 
     def one(t):
         try:

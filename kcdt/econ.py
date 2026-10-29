@@ -39,6 +39,24 @@ LINKS = [
 ]
 
 
+# Where each release is published first, for rows the calendar hasn't updated yet
+SOURCES = [
+    (r"Jobless Claims|Unemployment Claims", "https://www.dol.gov/ui/data.pdf"),
+    (r"Nonfarm|Payrolls|Unemployment Rate|Average Hourly|Average Weekly|Participation|CPI|PPI|JOLT|Employment Cost|"
+     r"Productivity|Unit Labor|Import Price|Export Price", "https://www.bls.gov/bls/newsrels.htm"),
+    (r"GDP|PCE|Personal Income|Personal Spending|Current Account|Corporate Profits", "https://www.bea.gov/news/current-releases"),
+    (r"Retail Sales|Durable|Goods Orders|Factory Orders|Housing Starts|Building Permits|New Home Sales|Construction|"
+     r"Business Inventories|Wholesale|Trade Balance|Retail Inventories", "https://www.census.gov/economic-indicators/"),
+    (r"Industrial Production|Capacity Utilization", "https://www.federalreserve.gov/releases/g17/current/default.htm"),
+    (r"^ISM", "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/"),
+    (r"Michigan", "https://www.sca.isr.umich.edu/"),
+    (r"CB Consumer Confidence", "https://www.conference-board.org/topics/consumer-confidence"),
+    (r"Crude|Gasoline|Distillate|Cushing|Refinery", "https://www.eia.gov/petroleum/supply/weekly/"),
+    (r"Natural Gas Storage", "https://ir.eia.gov/ngs/ngs.html"),
+    (r"Existing Home Sales|Pending Home", "https://www.nar.realtor/research-and-statistics"),
+]
+
+
 def event_link(name, day):
     for pat, url in LINKS:
         if re.search(pat, name or "", re.I):
@@ -138,6 +156,10 @@ def label(rows, ff, memory=None):
         r["ref"] = None if r["note"] else ref_period(r.get("e"), r["d"])
         if event_link(r.get("e"), r["d"]):
             r["link"] = event_link(r.get("e"), r["d"])
+        else:
+            src = next((url for pat, url in SOURCES if re.search(pat, r.get("e") or "", re.I)), None)
+            if src:
+                r["src"] = src
     key = lambda r: (r.get("e") or "").lower()  # Nasdaq writes "PCE Price index" (y/y) and "PCE price index" (m/m)
     pct = lambda r: (r.get("c") or r.get("p") or r.get("a") or "").endswith("%")
     # 1) ForexFactory: same release time, and the forecast (or previous) is the same number

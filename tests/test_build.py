@@ -43,7 +43,8 @@ def fake_fund(tickers, seed=2):
                       eq=float(rng.uniform(-0.5, 1.5)), pe=float(rng.uniform(5, 80)), ysec=None,
                       ipo=1.2e12, edate=1.8e9, revq=rev, epsq=[1.5, 1.2, 1.0, 0.8, 0.7], reva=[5e9, 4e9, 3e9],
                       epsa=[4.0, 3.0, 2.5], epsh=[1.5, 1.2, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4],
-                      efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9)
+                      efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9,
+                      qend="2026-09-30", erep=1.7616e9 + 86400)
     return out
 
 
@@ -79,7 +80,8 @@ def test_build():
     assert set(d["panic"]) == {"on", "day"}
     assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
     assert all(1 <= s["prsr"] <= 99 and "pd50" in s and "px50" in s for s in d["stocks"])
-    assert f0["fts"]
+    assert f0["fts"] and f0["qend"] == "2026-09-30" and f0["erep"] >= f0["fts"]  # reported after the last fetch
+    assert len(d["leaders"]) == 30 and set(d["leaders"]) <= set(DOW30)
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
     assert len(pages) == 1105 and len(nv["d"]) == 260 and nv["d"][-1] == "2026-10-27"
@@ -112,4 +114,14 @@ if __name__ == "__main__":
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
     m.write_stock_pages(pages)
+    # A past day in the history folder plus today's, so the 歷史 view has two dates to pick
+    import tempfile, json
+    hist = pathlib.Path(tempfile.mkdtemp())
+    old = m.snapshot(d)
+    past = (dt.date.fromisoformat(d["asof"]) - dt.timedelta(days=4)).isoformat()
+    old.update(d=past, kc=old["kc"][:3], kc_in=old["kc"][:1] and [old["kc"][0][0]], kc_out=["ZZZ"])
+    (hist / f"{past}.json").write_text(json.dumps(old, ensure_ascii=False))
+    m.keep_history(d, hist)
+    days = json.loads((m.OUT / "h" / "index.json").read_text())
+    assert days[0] == past and days[-1] == d["asof"], days
     print("ok", d["asof"], d["hist"][-1]["score"], len(d["stocks"]), d["breadth"])
