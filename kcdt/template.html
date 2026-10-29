@@ -531,7 +531,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-hist">
       <div class="sechead"><h2 id="h-hist">歷史日期檢視</h2>
         <div class="controls"><button class="tog" id="hx-prev" aria-label="前一日">◀</button><select id="hx-day" aria-label="揀日期"></select><button class="tog" id="hx-next" aria-label="後一日">▶</button></div></div>
-      <p class="muted small" style="margin:-4px 0 10px">每日收市後將嗰日網站顯示嘅結果原封不動保存，之後唔會用新數據重算。由 2026-10-29 開始保存，之前嘅日子冇紀錄。</p>
+      <p class="muted small" style="margin:-4px 0 10px">每日收市後將嗰日網站顯示嘅結果原封不動保存，之後唔會用新數據重算。<span id="hx-from"></span></p>
       <div id="hx"></div>
     </section>
   </main>
@@ -1360,6 +1360,7 @@ async function hxShow(d){
 DRAW.history = async () => {
   try{ HX=await (await fetch('h/index.json',{cache:'no-cache'})).json() }catch(e){ HX=[] }
   if(!HX.length){ $('hx').innerHTML='<div class="panel muted">未有保存紀錄。第一份會喺下一次收市更新之後出現。</div>'; ['hx-prev','hx-next','hx-day'].forEach(i=>$(i).hidden=true); return }
+  $('hx-from').textContent=`由 ${HX[0]} 開始保存，之前嘅日子冇紀錄。`;
   $('hx-day').innerHTML=[...HX].reverse().map(d=>`<option value="${d}">${d}</option>`).join('');
   $('hx-day').onchange=()=>hxShow($('hx-day').value);
   $('hx-prev').onclick=()=>{const i=HX.indexOf($('hx-day').value); if(i>0) hxShow(HX[i-1])};
