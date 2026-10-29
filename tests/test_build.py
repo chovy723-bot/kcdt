@@ -95,7 +95,9 @@ if __name__ == "__main__":
                                     u=(now + dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H:%MZ"), e=e, a=a, c=c, p=p)
     d["econ"] = [ev(-50, "GDP Price Index", "2.1%", "2.0%", "1.9%"), ev(-49, "Crude Oil Inventories", "-1.9M", "0.1M", "-3.1M"),
                  ev(-3, "Fed Interest Rate Decision", None, "4.00%", "4.00%"), ev(-3, "Redbook", "9.3%", None, "9.0%"),
-                 ev(20, "Core PCE Price Index", None, "0.3%", "0.2%"), ev(20, "Core PCE Price Index", None, "3.1%", "3.0%"),
+                 {**ev(20, "Core PCE Price Index", None, "0.3%", "0.2%"), "per": "按月", "ref": "2026 年 9 月", "imp": 3},
+                 {**ev(20, "Core PCE Price Index", None, "3.1%", "3.0%"), "per": "按年", "ref": "2026 年 9 月", "imp": 3},
+                 {**ev(80, "CPI", None, "0.2%", "0.3%"), "per": "按月", "perx": True, "ref": "2026 年 10 月"},
                  ev(30, "Initial Jobless Claims", "198K", "198K", "194K"), ev(70, "Natural Gas Storage", None, "75B", "77B")]
     d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets"),
                  dict(t="2026-10-28T08:00:00Z", title="MSFT Q1 2027 Earnings Call Transcript", link="https://example.com/b", src="Motley Fool", cat="Earnings"),

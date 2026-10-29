@@ -393,7 +393,10 @@ def economic_calendar(today=None):
                      c=clean(x.get("consensus")), p=clean(x.get("previous")))
                 for x in rows if x.get("country") == "United States"]
         time.sleep(0.5)
-    print(f"economic calendar: {len(out)} US releases")
+    from .econ import forexfactory, label
+    label(out, forexfactory())
+    print(f"economic calendar: {len(out)} US releases, {sum(1 for r in out if r.get('ref'))} with a period, "
+          f"{sum(1 for r in out if r.get('per') and not r.get('perx'))} with m/m-y/y from ForexFactory")
     return out
 
 

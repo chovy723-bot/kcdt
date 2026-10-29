@@ -14,6 +14,8 @@ def test_economic_calendar_dates_rows_one_day_back():
     asked = []
 
     def fake_get(url, **kw):
+        if "faireconomy" in url:
+            raise OSError("offline")
         day = url.rsplit("=", 1)[1]
         asked.append(day)
         if day == "2026-10-29":  # Nasdaq returns the 2026-10-28 FOMC decision under the next day's date
@@ -38,6 +40,26 @@ def test_economic_calendar_dates_rows_one_day_back():
     assert all(r["e"] != "CPI" for r in rows)
 
 
+
+
+def test_econ_labels():
+    from kcdt.econ import label
+    rows = [dict(d="2026-10-29", u="2026-10-29T12:30Z", e="Core PCE Price Index", a=None, c="0.3%", p="0.2%"),
+            dict(d="2026-10-29", u="2026-10-29T12:30Z", e="Core PCE Price Index", a=None, c="3.1%", p="3.0%"),
+            dict(d="2026-10-29", u="2026-10-29T12:30Z", e="GDP", a=None, c="3.2%", p="2.2%"),
+            dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", a=None, c="0.2%", p="0.3%"),
+            dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", a=None, c="2.9%", p="3.0%")]
+    ff = [dict(t="2026-10-29T12:30Z", title="Core PCE Price Index m/m", impact="High", f="0.3%", p="0.2%"),
+          dict(t="2026-10-29T12:30Z", title="Advance GDP q/q", impact="High", f="3.2%", p="1.5%")]
+    label(rows, ff)
+    pce_m, pce_y, gdp, cpi_m, cpi_y = rows
+    assert (pce_m["per"], pce_y["per"]) == ("按月", "按年") and not pce_m.get("perx") and pce_m["imp"] == pce_y["imp"] == 3
+    assert pce_m["ref"] == "2026 年 9 月"
+    assert gdp["per"] == "按季（年率）" and gdp["ref"] == "2026 年第 3 季"
+    assert (cpi_m["per"], cpi_y["per"], cpi_m["perx"]) == ("按月", "按年", True) and cpi_m["ref"] == "2026 年 10 月"
+
+
 if __name__ == "__main__":
     test_economic_calendar_dates_rows_one_day_back()
+    test_econ_labels()
     print("ok")
