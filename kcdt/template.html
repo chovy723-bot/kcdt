@@ -396,7 +396,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
         <div class="panel" style="padding:4px 16px"><ul class="news" id="news"></ul></div>
       </section>
     </div>
-    <p class="note">經濟數據同新聞嚟自 Nasdaq，每日香港時間早上約 7 點更新一次，唔係即時。所以晚上先公布嘅數據，要第二朝先見到「實際」數字。「按月／按年／按季」同重要程度對照 ForexFactory 日曆；下星期嘅暫時未有，會按數字大細推斷，標「？」。「統計期」按每項數據嘅固定公布時間表推算，以官方公布為準。</p>
+    <p class="note">經濟數據同新聞嚟自 Nasdaq，每日香港時間早上約 7 點更新一次，唔係即時。所以晚上先公布嘅數據，要第二朝先見到「實際」數字。「按月／按年／按季」同重要程度對照 ForexFactory 日曆，確認過嘅會記低，下星期同名數據照用；從未見過嘅先會按數字大細推斷，標「？」。「統計期」按每項數據嘅固定公布時間表推算；議息、國債拍賣呢類冇統計期嘅，就寫明係咩嘢。以官方公布為準。</p>
   </main>
 
   <!-- ===== 交易日誌 ===== -->
@@ -986,7 +986,7 @@ function drawEcon(){
   const next=E.filter(e=>e.key&&e.t&&e.t>now).sort((a,b)=>a.t-b.t)[0];
   const card=d=>{const dd=new Date(d+'T12:00:00');
     return `<div class="panel tablewrap" style="padding:10px 12px"${d===today?' id="econ-today"':''}><h3 style="margin-bottom:6px"><span class="num">${d.slice(5)}</span> <span class="muted small">星期${WD[dd.getDay()]}${d===today?' · 今日':''}</span></h3><table><thead><tr><th>時間</th><th>數據</th><th>狀態</th><th class="r">實際</th><th class="r">預期</th><th class="r">前值</th></tr></thead><tbody>${days[d].sort((a,b)=>(a.t||0)-(b.t||0)).map(e=>{const z=econZh(e.e||''), [st,sc]=ESTATE[e.state];
-      return `<tr${e===next?' class="nextev"':''}><td class="num small">${hkTime(e)}</td><td class="small">${e.key?'<b>★</b> ':''}${z?`<b>${z}</b> <span class="muted">${esc(e.e)}</span>`:esc(e.e||'')}${e.per?` <span class="badge"${e.perx?' title="按數字大細推斷"':''}>${e.per}${e.perx?'？':''}</span>`:''}${e.ref?`<div class="muted small">統計期：${e.ref}</div>`:''}${e===next?' <span class="badge">下一項重要</span>':''}</td>
+      return `<tr${e===next?' class="nextev"':''}><td class="num small">${hkTime(e)}</td><td class="small">${e.key?'<b>★</b> ':''}${z?`<b>${z}</b> <span class="muted">${esc(e.e)}</span>`:esc(e.e||'')}${e.per?` <span class="badge"${e.perx?' title="按數字大細推斷"':''}>${e.per}${e.perx?'？':''}</span>`:''}${e.ref?`<div class="muted small">統計期：${e.ref}</div>`:e.note?`<div class="muted small">${e.note}</div>`:''}${e===next?' <span class="badge">下一項重要</span>':''}</td>
       <td class="small ${sc}" style="white-space:nowrap">${st}</td><td class="r num"><b>${e.a||'—'}</b></td><td class="r num muted">${e.c||'—'}</td><td class="r num muted">${e.p||'—'}</td></tr>`}).join('')}</tbody></table></div>`};
   const ks=Object.keys(days).sort(), past=ks.filter(d=>d<today), rest=ks.filter(d=>d>=today);
   $('econ').innerHTML = (past.length?`<details class="panel" style="padding:10px 12px"><summary class="small" style="cursor:pointer">之前 ${past.length} 日嘅數據</summary><div style="display:grid;gap:12px;margin-top:10px">${past.map(card).join('')}</div></details>`:'')

@@ -59,7 +59,29 @@ def test_econ_labels():
     assert (cpi_m["per"], cpi_y["per"], cpi_m["perx"]) == ("按月", "按年", True) and cpi_m["ref"] == "2026 年 10 月"
 
 
+def test_econ_labels_remembered_and_notes():
+    from kcdt.econ import label
+    memory = {}
+    week1 = [dict(d="2026-10-14", u="2026-10-14T12:30Z", e="CPI", c="0.2%", p="0.3%"),
+             dict(d="2026-10-14", u="2026-10-14T12:30Z", e="CPI", c="2.9%", p="3.0%")]
+    label(week1, [dict(t="2026-10-14T12:30Z", title="CPI y/y", impact="High", f="2.9%", p="3.0%")], memory)
+    assert [r["per"] for r in week1] == ["按月", "按年"] and memory["CPI"] == {"0": "按月", "1": "按年"}
+    # a later week with no ForexFactory rows: the remembered order is used, not a guess
+    week2 = [dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="0.4%", p="0.2%"),
+             dict(d="2026-11-12", u="2026-11-12T13:30Z", e="CPI", c="0.1%", p="2.9%")]
+    label(week2, [], memory)
+    assert [r["per"] for r in week2] == ["按月", "按年"] and not any(r.get("perx") for r in week2)
+    notes = [dict(d="2026-10-28", u="2026-10-28T18:00Z", e="Fed Interest Rate Decision", c="4.00%", p="4.00%"),
+             dict(d="2026-10-27", u="2026-10-27T17:00Z", e="2-Year Note Auction", c=None, p="4.787%"),
+             dict(d="2026-10-27", u="2026-10-27T12:55Z", e="Redbook", c=None, p="9.0%"),
+             dict(d="2026-10-29", u="2026-10-29T20:30Z", e="Fed's Balance Sheet", c=None, p="6,754B")]
+    label(notes, [], {})
+    assert [r["note"] for r in notes] == ["議息會議結果", "國債拍賣 · 數字係得標息率",
+                                         "截至 10/24 嗰星期 · 大型零售商同店銷售按年", "截至 10/28（星期三）"]
+
+
 if __name__ == "__main__":
     test_economic_calendar_dates_rows_one_day_back()
     test_econ_labels()
+    test_econ_labels_remembered_and_notes()
     print("ok")
