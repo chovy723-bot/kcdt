@@ -89,9 +89,17 @@ if __name__ == "__main__":
     import pathlib
     from kcdt import __main__ as m
     d, pages = test_build()
-    d["econ"] = [dict(d="2026-10-28", u="2026-10-28T12:30Z", e="GDP Price Index", a="2.1%", c="2.0%", p="1.9%"),
-                 dict(d="2026-10-29", u="2026-10-29T18:00Z", e="Fed Interest Rate Decision", a=None, c="4.25%", p="4.50%")]
-    d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets")]
+    import datetime as dt
+    now = dt.datetime.now(dt.timezone.utc)
+    ev = lambda h, e, a, c, p: dict(d=(now + dt.timedelta(hours=h)).strftime("%Y-%m-%d"),
+                                    u=(now + dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H:%MZ"), e=e, a=a, c=c, p=p)
+    d["econ"] = [ev(-50, "GDP Price Index", "2.1%", "2.0%", "1.9%"), ev(-49, "Crude Oil Inventories", "-1.9M", "0.1M", "-3.1M"),
+                 ev(-3, "Fed Interest Rate Decision", None, "4.00%", "4.00%"), ev(-3, "Redbook", "9.3%", None, "9.0%"),
+                 ev(20, "Core PCE Price Index", None, "0.3%", "0.2%"), ev(20, "Core PCE Price Index", None, "3.1%", "3.0%"),
+                 ev(30, "Initial Jobless Claims", "198K", "198K", "194K"), ev(70, "Natural Gas Storage", None, "75B", "77B")]
+    d["news"] = [dict(t="2026-10-28T09:00:00Z", title="Stocks rally as <tech> leads", link="https://example.com/a", src="Nasdaq", cat="Markets"),
+                 dict(t="2026-10-28T08:00:00Z", title="MSFT Q1 2027 Earnings Call Transcript", link="https://example.com/b", src="Motley Fool", cat="Earnings"),
+                 dict(t="2026-10-28T07:00:00Z", title="Chip stocks climb", link="https://example.com/c", src="Nasdaq", cat="Technology")]
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
