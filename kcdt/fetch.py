@@ -372,29 +372,35 @@ def _et_to_utc(day, hhmm):
         return None
 
 
-def economic_calendar():
-    """US releases for this week and next: [{d, u (UTC time), e (event), a (actual), c (consensus), p (previous)}]."""
-    today = pd.Timestamp.now(tz="America/New_York").normalize()
+def economic_calendar(today=None):
+    """US releases for this week and next: [{d, u (UTC time), e (event), a (actual), c (consensus), p (previous)}].
+
+    Nasdaq files each day's releases under the next day's date (the 2026-10-28 FOMC decision comes back for
+    date=2026-10-29), so query the day after and date the rows one day earlier."""
+    today = pd.Timestamp(today or pd.Timestamp.now(tz="America/New_York").date())
     monday = today - pd.Timedelta(days=today.weekday())
+    clean = lambda x: None if (x or "").replace("&nbsp;", "").strip() == "" else x.strip()
     out = []
     for d in pd.bdate_range(monday, periods=10):
-        day = d.strftime("%Y-%m-%d")
+        day, ask = d.strftime("%Y-%m-%d"), (d + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            r = requests.get(f"https://api.nasdaq.com/api/calendar/economicevents?date={day}", headers=NASDAQ_UA, timeout=30)
+            r = requests.get(f"https://api.nasdaq.com/api/calendar/economicevents?date={ask}", headers=NASDAQ_UA, timeout=30)
             rows = ((r.json().get("data") or {}).get("rows")) or []
         except Exception as e:
             print("economic calendar failed:", day, e)
             continue
-        clean = lambda x: (x or "").strip() or None
         out += [dict(d=day, u=_et_to_utc(day, x.get("gmt")), e=clean(x.get("eventName")), a=clean(x.get("actual")),
                      c=clean(x.get("consensus")), p=clean(x.get("previous")))
                 for x in rows if x.get("country") == "United States"]
         time.sleep(0.5)
-    print(f"economic calendar: {len(out)} US releases")
+    from .econ import forexfactory, label
+    label(out, forexfactory())
+    print(f"economic calendar: {len(out)} US releases, {sum(1 for r in out if r.get('ref'))} with a period, "
+          f"{sum(1 for r in out if r.get('per') and not r.get('perx'))} with m/m-y/y from ForexFactory")
     return out
 
 
-def headlines(feeds=("Markets", "Earnings", "Technology"), n=40):
+def headlines(feeds=("Markets", "Earnings", "Technology"), n=60):
     """Latest market news from Nasdaq's RSS feeds: [{t (UTC ISO), title, link, src}]."""
     import xml.etree.ElementTree as ET
     from datetime import timezone
@@ -410,7 +416,7 @@ def headlines(feeds=("Markets", "Earnings", "Technology"), n=40):
             continue
         for it in items:
             title, link = (it.findtext("title") or "").strip(), (it.findtext("link") or "").strip()
-            if not title or link in seen:
+            if not title or link in seen or "transcript" in title.lower():  # call transcripts crowd out the news
                 continue
             seen.add(link)
             try:

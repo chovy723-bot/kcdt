@@ -20,7 +20,9 @@ SECTORS = [("XLK", "科技"), ("SMH", "半導體"), ("XLC", "通訊"), ("XLY", "
 INDICES = [("^GSPC", "S&P 500"), ("^IXIC", "Nasdaq 綜合"), ("^DJI", "道指"),
            ("IWM", "羅素 2000 (IWM)"), ("RSP", "等權 S&P (RSP)"), ("^VIX", "VIX")]
 
-MINIS = [("^GSPC", "S&P 500"), ("^IXIC", "NASDAQ"), ("^DJI", "道指"), ("IWM", "羅素 2000")]
+# (ticker, name, what the number is): Russell 2000 is shown through the IWM ETF, so its price is in dollars
+MINIS = [("^GSPC", "S&P 500", "指數 · 點"), ("^IXIC", "Nasdaq 綜合", "指數 · 點"), ("^DJI", "道瓊斯工業", "指數 · 點"),
+         ("IWM", "羅素 2000", "IWM ETF · 美元")]
 
 # GICS (Wikipedia) -> Yahoo/finviz sector names, and Chinese labels
 GICS_TO_SECTOR = {
@@ -140,6 +142,7 @@ def build(px, meta, fund=None, fng=None, earn=None):
     # (e.g. VIX trades before the cash open), which would leave every stock NaN.
     P = _clean(px)
     days = P["Close"].index
+    asof = days[-1].strftime("%Y-%m-%d")
     close, high, low, vol = P["Close"], P["High"], P["Low"], P["Volume"]
 
     # ---- temperature (unchanged method) ----
@@ -192,6 +195,9 @@ def build(px, meta, fund=None, fng=None, earn=None):
         row.update(fundamentals_row(fund.get(t)))
         if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market
             row["edate"], row["etime"] = earn[t]
+            row["econf"] = True  # on Nasdaq's dated calendar; Yahoo-only dates are estimates
+        if row.get("edate") and row["edate"] < asof:  # Yahoo sometimes still holds the last report
+            row["elast"], row["edate"], row["etime"] = row["edate"], None, None
         stocks.append(row)
 
     # ---- breadth: all stocks and Nasdaq-100 only ----
@@ -232,16 +238,16 @@ def build(px, meta, fund=None, fng=None, earn=None):
     idx = [dict(n=n, l=_f(close[t].dropna().iloc[-1]), p=_f(close[t].dropna().iloc[-2]))
            for t, n in INDICES if t in close]
     minis = []
-    for t, n in MINIS:
+    for t, n, u in MINIS:
         if t not in close:
             continue
         o = P["Open"][t].tail(60)
-        minis.append(dict(n=n, d=[x.strftime("%m-%d") for x in o.index],
+        minis.append(dict(n=n, u=u, d=[x.strftime("%m-%d") for x in o.index],
                           o=[_f(x) for x in o], h=[_f(x) for x in high[t].tail(60)],
                           l=[_f(x) for x in low[t].tail(60)], c=[_f(x) for x in close[t].tail(60)]))
 
     return dict(
-        asof=days[-1].strftime("%Y-%m-%d"),
+        asof=asof,
         hist=hist, tech=tech(close, high, meta), panic=_panic(indicator_frame(close, high, close["^VIX"]).dropna()),
         rebound=_rebound(close["QQQ"].dropna()) if "QQQ" in close else None,
         stocks=stocks, idx=idx, sectors=sectors, minis=minis,
