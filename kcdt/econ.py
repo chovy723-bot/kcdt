@@ -2,10 +2,12 @@
 
 Nasdaq's calendar gives neither, so:
 - m/m, y/y and q/q come from ForexFactory's weekly calendar, whose titles say it ("Core PCE Price Index m/m"),
-  matched to Nasdaq's rows by release time and forecast. ForexFactory only publishes the current week; for
-  later weeks a pair of same-name % rows falls back to "smaller = m/m" and is flagged as a guess.
+  matched to Nasdaq's rows by release time and forecast. ForexFactory only publishes the current week, so each
+  confirmed answer is remembered by event name and row position (cache/econ_labels.json) and reused for later
+  weeks; only a pair never seen before falls back to "smaller = m/m", flagged as a guess.
 - The reference period follows each release's fixed schedule (CPI in November covers October, GDP covers
-  the last finished quarter, jobless claims cover the week to last Saturday).
+  the last finished quarter, jobless claims cover the week to last Saturday). Events with no period
+  (rate decisions, auctions, speeches) get a short note on what they are instead.
 """
 import re
 
@@ -15,11 +17,30 @@ import requests
 FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 PER = {"m/m": "按月", "y/y": "按年", "q/q": "按季（年率）"}
 
+# Events that have no reference period: say what they are. A callable gets the release date.
+NOTES = [
+    (r"FOMC Statement|Fed Interest Rate Decision", "議息會議結果"),
+    (r"FOMC Press Conference", "議息會議後記者會"),
+    (r"FOMC.*Minutes", "上次議息會議紀錄"),
+    (r"Speaks|Speech|Testimony", "聯儲官員講話"),
+    (r"Auction", "國債拍賣 · 數字係得標息率"),
+    (r"GDPNow", "亞特蘭大聯儲對今季 GDP 嘅即時估算（年率）"),
+    (r"Fed's Balance Sheet|Reserve Balances", lambda d: f"截至 {_back(d, 2).month}/{_back(d, 2).day}（星期三）"),
+    (r"Redbook", lambda d: f"截至 {_back(d, 5).month}/{_back(d, 5).day} 嗰星期 · 大型零售商同店銷售按年"),
+    (r"ADP.*Weekly", "ADP 每週就業估算（4 星期平均）"),
+]
+
+
+def _back(d, weekday):
+    """The last date before d that falls on weekday (Mon=0)."""
+    return d - pd.Timedelta(days=(d.weekday() - weekday) % 7 or 7)
+
+
 # (name pattern, rule): months back from the release month (or a function of the release date), "q" = last finished quarter,
 # "w-sat"/"w-fri" = week ending the previous Saturday/Friday. Patterns are tried in order.
 PERIOD_RULES = [
     (r"Jobless Claims|Unemployment Claims", "w-sat"),
-    (r"Crude|Gasoline|Distillate|Heating Oil|Cushing|Refinery|EIA|Natural Gas Storage", "w-fri"),
+    (r"Crude|Gasoline|Distillate|Heating Oil|Cushing|Refinery|EIA|Natural Gas Storage|MBA|Mortgage", "w-fri"),
     (r"^(Advance |Prelim |Final )?GDP|Employment Cost Index|Productivity|Unit Labor Costs|Current Account", "q"),
     (r"JOLT|House Price|HPI|Case-Shiller|S&P/CS|Factory Orders|Business Inventories|Construction Spending|"
      r"Consumer Credit|^Trade Balance", 2),
@@ -29,8 +50,16 @@ PERIOD_RULES = [
     (r"CPI|PPI|PCE|Personal Income|Personal Spending|Retail Sales|Nonfarm|Non-Farm|Unemployment Rate|"
      r"Average Hourly|Durable|Goods Orders|Industrial Production|Capacity Utilization|Housing Starts|"
      r"Building Permits|Home Sales|Goods Trade Balance|Inventories|ISM|Import Price|Export Price|"
-     r"Chicago Fed National|ADP Nonfarm|Challenger|Budget", 1),
+     r"Chicago Fed National|ADP Nonfarm|Challenger|Budget|M2 Money", 1),
 ]
+
+
+def event_note(name, day):
+    """What an event without a reference period is (a rate decision, an auction...), or None."""
+    for pat, note in NOTES:
+        if re.search(pat, name or "", re.I):
+            return note(pd.Timestamp(day)) if callable(note) else note
+    return None
 
 
 def ref_period(name, day):
@@ -43,8 +72,7 @@ def ref_period(name, day):
             q = (d.to_period("Q") - 1)
             return f"{q.year} 年第 {q.quarter} 季"
         if rule in ("w-sat", "w-fri"):
-            back = (d.weekday() - (5 if rule == "w-sat" else 4)) % 7 or 7
-            end = d - pd.Timedelta(days=back)
+            end = _back(d, 5 if rule == "w-sat" else 4)
             return f"截至 {end.month}/{end.day} 嗰星期"
         m = d.to_period("M") - (rule(d) if callable(rule) else rule)
         return f"{m.year} 年 {m.month} 月"
@@ -79,10 +107,22 @@ def forexfactory():
     return out
 
 
-def label(rows, ff):
-    """Add ref (period covered), per (按月/按年/按季), perx (per is a guess) and imp (3 high, 2 medium) in place."""
+# Row orders seen on Nasdaq and confirmed against ForexFactory (2026-10-27 week); the cache adds more each week
+SEED = {"Core PCE Price Index": {"0": "按月", "1": "按年"}, "House Price Index": {"0": "按月", "1": "按年"}}
+
+
+def label(rows, ff, memory=None):
+    """Add ref (period covered) or note (what the event is), per (按月/按年/按季), perx (per is a guess)
+    and imp (3 high, 2 medium) in place.
+
+    memory: {event name: {row position within that day's same-name rows: per}}, updated with what
+    ForexFactory confirms and used for weeks it doesn't cover."""
+    memory = {} if memory is None else memory
+    for name, known in SEED.items():
+        memory.setdefault(name, dict(known))
     for r in rows:
-        r["ref"] = ref_period(r.get("e"), r["d"])
+        r["note"] = event_note(r.get("e"), r["d"])
+        r["ref"] = None if r["note"] else ref_period(r.get("e"), r["d"])
     # 1) ForexFactory: same release time, and the forecast (or previous) is the same number
     for r in rows:
         best = None
@@ -98,19 +138,33 @@ def label(rows, ff):
             if m and (r.get("c") or r.get("p") or "").endswith("%"):
                 r["per"] = PER[m.group(1)]
             r["imp"] = {"High": 3, "Medium": 2}.get(best["impact"])
-    # 2) A same-name pair on one day where one side is known: the other is the opposite
     groups = {}
     for r in rows:
         groups.setdefault((r["d"], r.get("e")), []).append(r)
+    pct = lambda r: (r.get("c") or r.get("p") or "").endswith("%")
+    # 2) A same-name pair where one side is confirmed: the other is the opposite
     for g in groups.values():
-        if len(g) != 2 or not all((x.get("c") or x.get("p") or "").endswith("%") for x in g):
+        if len(g) == 2 and all(pct(x) for x in g):
+            a, b = g
+            for x, y in ((a, b), (b, a)):
+                if x.get("per") in ("按月", "按年") and not y.get("per"):
+                    y["per"] = "按年" if x["per"] == "按月" else "按月"
+    # 3) Remember what is confirmed; reuse it where ForexFactory has nothing (next week)
+    for (_, name), g in groups.items():
+        for i, r in enumerate(g):
+            if r.get("per") and pct(r):
+                memory.setdefault(name, {})[str(i)] = r["per"]
+    for (_, name), g in groups.items():
+        for i, r in enumerate(g):
+            known = memory.get(name, {}).get(str(i))
+            if known and not r.get("per") and pct(r):
+                r["per"] = known
+    # 4) Never seen: guess a same-name % pair by size
+    for g in groups.values():
+        if len(g) != 2 or not all(pct(x) for x in g):
             continue
         a, b = g
-        if a.get("per") and not b.get("per") and a["per"] in ("按月", "按年"):
-            b["per"] = "按年" if a["per"] == "按月" else "按月"
-        elif b.get("per") and not a.get("per") and b["per"] in ("按月", "按年"):
-            a["per"] = "按年" if b["per"] == "按月" else "按月"
-        elif not a.get("per") and not b.get("per"):  # next week: no ForexFactory, guess by size
+        if not a.get("per") and not b.get("per"):
             va, vb = (abs(_num(x.get("p") or x.get("c")) or 0) for x in g)
             if va != vb:
                 small, big = (a, b) if va < vb else (b, a)

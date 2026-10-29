@@ -36,7 +36,7 @@ def main():
     nq = nasdaq_quarters(want, ROOT / "cache" / "nasdaq_quarters.json")
     fund = {t: {**rec, **nq.get(t, {})} for t, rec in fund.items()}
     data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earnings_calendar())
-    data["econ"], data["news"] = economic_calendar(), headlines()
+    data["econ"], data["news"] = economic_calendar(labels_file="cache/econ_labels.json"), headlines()
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
     OUT.mkdir(exist_ok=True)

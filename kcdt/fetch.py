@@ -372,7 +372,7 @@ def _et_to_utc(day, hhmm):
         return None
 
 
-def economic_calendar(today=None):
+def economic_calendar(today=None, labels_file=None):
     """US releases for this week and next: [{d, u (UTC time), e (event), a (actual), c (consensus), p (previous)}].
 
     Nasdaq files each day's releases under the next day's date (the 2026-10-28 FOMC decision comes back for
@@ -394,9 +394,20 @@ def economic_calendar(today=None):
                 for x in rows if x.get("country") == "United States"]
         time.sleep(0.5)
     from .econ import forexfactory, label
-    label(out, forexfactory())
+    path = pathlib.Path(labels_file) if labels_file else None
+    memory = {}
+    if path and path.exists():
+        try:
+            memory = json.loads(path.read_text())
+        except Exception:
+            memory = {}
+    label(out, forexfactory(), memory)
+    if path:
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps(memory, ensure_ascii=False, indent=1, sort_keys=True))
     print(f"economic calendar: {len(out)} US releases, {sum(1 for r in out if r.get('ref'))} with a period, "
-          f"{sum(1 for r in out if r.get('per') and not r.get('perx'))} with m/m-y/y from ForexFactory")
+          f"{sum(1 for r in out if r.get('per') and not r.get('perx'))} with m/m-y/y known, "
+          f"{sum(1 for r in out if r.get('perx'))} guessed")
     return out
 
 
