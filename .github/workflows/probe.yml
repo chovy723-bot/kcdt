@@ -8,17 +8,19 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: pip install -q "yfinance>=0.2.66" "curl_cffi>=0.13"
+      - run: pip install -q requests
       - run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-          echo "== screener"; curl -s -m 60 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=25&download=true" -o s.json -w "%{http_code} %{size_download}\n"; head -c 1500 s.json; echo
-          python -c "import json;d=json.load(open('s.json'));r=d['data']['rows'];print(len(r));import collections;print(collections.Counter(x['country'] for x in r).most_common(5));print(collections.Counter(x['sector'] for x in r).most_common(20))"
-          echo "== econ"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/calendar/economicevents?date=2026-10-28" | head -c 1500; echo
-          echo "== earnings"; curl -s -m 30 -A "$UA" -H "Accept: application/json" "https://api.nasdaq.com/api/calendar/earnings?date=2026-10-29" | head -c 800; echo
-          echo "== rss"; curl -s -m 30 -A "$UA" "https://www.nasdaq.com/feed/rssoutbound?category=Markets" | head -c 600; echo
           python - <<'PY'
-          import yfinance as yf, json
-          for t in ["QQQ","^GSPC"]:
-              n = yf.Ticker(t).news
-              print("== yf news", t, len(n)); print(json.dumps(n[:1], default=str)[:1200])
+          import requests, json
+          UA={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36","Accept":"application/json"}
+          for day in ["2026-10-27","2026-10-28","2026-10-29","2026-10-30"]:
+              r=requests.get(f"https://api.nasdaq.com/api/calendar/economicevents?date={day}",headers=UA,timeout=30).json()
+              rows=(r.get("data") or {}).get("rows") or []
+              print("== econ", day, len(rows), "keys", list(rows[0].keys()) if rows else None)
+              for x in rows:
+                  if x.get("country")=="United States": print(json.dumps(x, ensure_ascii=False))
+          for day in ["2026-10-28","2026-10-29"]:
+              r=requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}",headers=UA,timeout=30).json()
+              d=r.get("data") or {}
+              print("== earn", day, {k:v for k,v in d.items() if k!="rows"}); print(json.dumps((d.get("rows") or [])[:2]))
           PY
