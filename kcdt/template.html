@@ -40,6 +40,12 @@ a{color:var(--link)}
 .search input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--muted)}
 .ftag{display:inline-block;font-size:13px;padding:1px 8px;margin:2px 4px 2px 0;border-radius:6px;background:var(--soft);color:var(--muted)}
+.ftag button{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 6px;font:inherit}
+.ftag button:hover{color:var(--hot)}
+.cbform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;border:1px solid var(--selline);border-radius:8px;background:var(--sel)}
+.cbform select,.cbform input{font:inherit;font-size:14px;padding:5px 8px;border-radius:6px;border:1px solid var(--ctlline);background:var(--ctl);color:var(--ink)}
+.cbform input{width:7em}
+#cb-k{max-width:100%}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
 .stale{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 10%,var(--panel));color:var(--ink);border-radius:10px;padding:10px 14px;font-size:14px}
 .stale b{color:var(--hot)}
@@ -338,6 +344,12 @@ table.ind{max-width:880px}
 tr.nextev td{background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 .news a{color:var(--ink);text-decoration:none;font-weight:500}
 .news a:hover{color:var(--accent);text-decoration:underline}
+.wllists{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wllists input{font:inherit;font-size:14px;padding:5px 8px;border-radius:6px;border:1px solid var(--ctlline);background:var(--ctl);color:var(--ink);width:10em}
+.wltag{display:inline-block;font-size:12px;padding:0 6px;margin:1px 3px 1px 0;border-radius:5px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.wlpick{position:fixed;z-index:10;background:var(--raise);border:1px solid var(--ctlline);border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:grid;gap:8px;min-width:200px;max-width:min(300px,92vw)}
+.wlpick label{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.wlpick .row{display:flex;gap:8px;justify-content:flex-end}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 16px;border-radius:999px;font-size:14px;z-index:9;max-width:90vw}
 footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
 </style>
@@ -477,11 +489,12 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-wl">
       <div class="sechead"><h2 id="h-wl">自選清單</h2><span class="badge small" id="wl-where"></span></div>
       <div class="panel wlsum" id="wl-sum" role="status"></div>
+      <div class="wllists" id="wl-lists"></div>
       <div class="controls" id="wl-filter"></div>
       <div class="panel tablewrap wl"><table>
-        <thead><tr><th></th><th>代號</th><th>狀態</th><th class="r">收市</th><th class="r">今日 %</th><th class="r">RS</th><th class="r">距 50 日線 %</th><th>趨勢</th><th>KC 條件</th><th>下次業績（美東）</th><th>今日變化</th><th>筆記</th><th>加入</th></tr></thead>
+        <thead><tr><th></th><th>代號</th><th id="wl-lh">清單</th><th>狀態</th><th class="r">收市</th><th class="r">今日 %</th><th class="r">RS</th><th class="r">距 50 日線 %</th><th>趨勢</th><th>KC 條件</th><th>下次業績（美東）</th><th>今日變化</th><th>筆記</th><th>加入</th></tr></thead>
         <tbody id="wlbody"></tbody></table></div>
-      <p class="note">喺選股器、機會頁或者個股頁撳 ☆ 就加入；再撳一下移除。筆記打完撳 Enter 或者撳出去就自動儲存。登入 Gmail 後會儲喺你個帳戶，換機都睇到；未登入就儲喺呢部機嘅瀏覽器。</p>
+      <p class="note">喺選股器、機會頁或者個股頁撳 ☆ 就加入；有幾個清單嘅話會問你加入邊個（一隻股可以喺幾個清單）。撳「＋ 新增清單」開新清單，例如「長線」、「短炒」。筆記打完撳 Enter 或者撳出去就自動儲存。登入 Gmail 後會儲喺你個帳戶，換機都睇到；未登入就儲喺呢部機嘅瀏覽器。</p>
     </section>
   </main>
 
@@ -490,11 +503,20 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-scr">
       <div class="sechead"><h2 id="h-scr">選股器</h2><span class="muted small" id="scrcount"></span></div>
       <div class="panel scrsum" role="status">
-        <div><b id="scr-n"></b> <span id="scr-list"></span></div>
+        <div><b id="scr-n"></b> <span id="scr-list"></span> <button class="tog" id="cb-add" type="button">＋ 新增條件</button></div>
+        <div class="cbform" id="cb-form" hidden>
+          <select id="cb-k" aria-label="指標"></select>
+          <select id="cb-op" aria-label="條件"><option value="gt">高過</option><option value="lt">低過</option><option value="bt">介乎</option></select>
+          <input id="cb-a" type="number" step="any" aria-label="數值" placeholder="數值">
+          <span id="cb-and">至</span><input id="cb-b" type="number" step="any" aria-label="上限" placeholder="上限">
+          <select id="cb-opt" aria-label="選項"></select>
+          <button class="tog" id="cb-ok" type="button" aria-pressed="true">加入</button><button class="tog" id="cb-cancel" type="button">取消</button>
+          <span class="muted small" id="cb-msg"></span>
+        </div>
         <div class="cfbar">
           <select id="pre" aria-label="我的預設"></select>
           <input id="pre-name" placeholder="改個名，例如：強勢科技" aria-label="預設名稱">
-          <button class="tog" id="pre-save">儲存目前條件</button>
+          <button class="tog" id="pre-save">儲存做我的選股</button>
           <button class="tog" id="pre-del" hidden>刪除呢個預設</button>
           <span class="muted small" id="pre-msg"></span>
           <span style="flex:1"></span>
@@ -705,7 +727,8 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <p class="muted small" id="s-foot"></p>
   </main>
 
-  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="wlpick" id="wlpick" role="dialog" aria-label="揀自選清單" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
   <footer>
     <p>本網站內容只供數據參考及教育用途，並不構成任何投資建議、要約或招攬。過往表現不代表將來。指標門檻已用 2004 年至今嘅數據回測；分數係風險參考，唔係買賣訊號。</p>
     <p>每個交易日美股收市後自動更新（約香港時間早上 7 點）；經濟數據同新聞喺美國交易日內再擷取幾次。數據來源：Yahoo Finance、Nasdaq、ForexFactory、CNN、Wikipedia。各項更新時間同覆蓋見<a href="#about">說明及數據狀態</a>。</p>
@@ -1187,11 +1210,14 @@ const plain=h=>h.replace(/<span id="g3lab">\d+<\/span>/,G3X).replace(/<[^>]+>/g,
 function scrSummary(chipOn, cfOn){
   const n=chipOn.length+cfOn.length;
   $('scr-n').textContent = n ? `已啟用 ${n} 項條件：` : '未有啟用任何條件，顯示晒全部股票';
-  $('scr-list').innerHTML = chipOn.map(x=>`<span class="ftag">${plain(x[1])}</span>`).join('')
-    + cfOn.map(([k,v])=>{const x=CFK[k], o=cfOpts(x); return `<span class="ftag">${x[2]}：${x[3]?rlab(v):o[+v][0]}</span>`}).join('');
+  // every active condition is a tag with × to drop it
+  $('scr-list').innerHTML = chipOn.map(x=>`<span class="ftag">${plain(x[1])}<button type="button" data-chip="${x[0]}" aria-label="移除條件">×</button></span>`).join('')
+    + cfOn.map(([k,v])=>{const x=CFK[k], o=cfOpts(x); return `<span class="ftag">${x[2]}：${x[3]?rlab(v):o[+v][0]}<button type="button" data-cf="${k}" aria-label="移除條件">×</button></span>`}).join('');
+  $('scr-list').querySelectorAll('button[data-chip]').forEach(b=>b.onclick=()=>{on.delete(b.dataset.chip); drawChips(); renderStocks()});
+  $('scr-list').querySelectorAll('button[data-cf]').forEach(b=>b.onclick=()=>{delete CFS[b.dataset.cf]; drawCF(); renderStocks()});
   const adv=chipOn.filter(x=>FB.includes(x)).length+cfOn.length;
   $('adv-n').textContent = adv ? `已啟用 ${adv} 項` : '加強條件同自訂條件，預設收起';
-  if(adv && !scrSummary.opened){ $('adv').open=true; scrSummary.opened=true }
+  if(chipOn.some(x=>FB.includes(x)) && !scrSummary.opened){ $('adv').open=true; scrSummary.opened=true }
   const miss=S.length-D.nfund;
   $('scr-na').textContent = `${miss.toLocaleString('en-US')} 隻股票未有基本面數據（市值、營收、EPS 等，表入面顯示「—」）。${INCL_NA?'而家會保留佢哋：缺少嘅數據當係符合條件。':'預設會被基本面條件篩走；剔「包括資料不足股票」就會保留。'}基本面數據每日補一部分，價格同技術數據每日收市後更新。`;
 }
@@ -1422,6 +1448,22 @@ function initPre(){
     await drawPre(n); preMsg(DB===LocalDB?'已儲存（暫時儲喺呢部機）':'已儲存到你個帳戶')};
   $('pre-del').onclick=async()=>{const n=$('pre').value; await DB.del('presets',n); $('pre-name').value=''; await drawPre(''); preMsg('已刪除')};
   $('cf-clear').onclick=()=>{CFS={}; drawCF(); renderStocks()};
+  // ＋ 新增條件: pick a metric, then 高過 / 低過 / 介乎 a number (or one of its options); stored like the 自訂條件 grid
+  $('cb-k').innerHTML=CFG.map(g=>`<optgroup label="${g}">${CF.filter(x=>x[1]===g).map(x=>`<option value="${x[0]}">${x[2]}</option>`).join('')}</optgroup>`).join('');
+  const cbShow=()=>{const x=CFK[$('cb-k').value], num=!!x[3], bt=$('cb-op').value==='bt';
+    $('cb-op').hidden=!num; $('cb-a').hidden=!num; $('cb-b').hidden=!(num&&bt); $('cb-and').hidden=!(num&&bt); $('cb-opt').hidden=num;
+    $('cb-a').placeholder=bt?'下限':'數值';
+    if(!num) $('cb-opt').innerHTML=cfOpts(x).map((o,i)=>`<option value="${i}">${o[0]}</option>`).join('');
+    $('cb-msg').textContent=CFS[x[0]]!=null?'呢個指標已經有條件，加入會取代':''};
+  $('cb-k').onchange=cbShow; $('cb-op').onchange=cbShow;
+  $('cb-add').onclick=()=>{const f=$('cb-form'); f.hidden=!f.hidden; if(!f.hidden){cbShow(); $('cb-k').focus()}};
+  $('cb-cancel').onclick=()=>{$('cb-form').hidden=true};
+  $('cb-ok').onclick=()=>{const k=$('cb-k').value, x=CFK[k], a=$('cb-a').value.trim(), b=$('cb-b').value.trim(), op=$('cb-op').value;
+    let v;
+    if(!x[3]) v=$('cb-opt').value;
+    else if(op==='bt'){ if(a===''||b===''||+a>+b){$('cb-msg').textContent='介乎要填下限同上限（下限細過上限）';return} v=`${a}~${b}` }
+    else { if(a===''){$('cb-msg').textContent='要填數值';$('cb-a').focus();return} v=op==='gt'?`${a}~`:`~${a}` }
+    CFS[k]=v; $('cb-a').value=''; $('cb-b').value=''; $('cb-form').hidden=true; drawCF(); renderStocks()};
 }
 DRAW.screener = () => {
   $('g3x').onchange=()=>{G3X=+$('g3x').value;on.add('g3');drawChips();renderStocks()};
@@ -1438,35 +1480,90 @@ DRAW.screener = () => {
 };
 
 // ---------- 自選清單 ----------
-// DB 'watch' rows {id: ticker, st: watch|break|hold, note, added}
-const WST={watch:'觀察中',break:'等突破',hold:'持倉中'};
-let WL=new Map(), wlFilter='all';
+// DB 'watch' rows {id: ticker, st: watch|break|hold, note, added, ls: [list ids]}, plus one row '_lists' {lists:[{id,n}]}
+// holding the person's named lists (長線, 短炒 …). Rows saved before lists existed have no ls and belong to the first list.
+const WST={watch:'觀察中',break:'等突破',hold:'持倉中'}, WLN_MAX=20, WL_DEF=[{id:'main',n:'我的自選'}];
+let WL=new Map(), wlFilter='all', WLISTS=WL_DEF, wlList='all', wlEdit=null;
+const wlLs = r => (r.ls&&r.ls.length?r.ls:[WLISTS[0].id]).filter(id=>WLISTS.some(l=>l.id===id));
+const wlSaveLists = () => DB.put('watch',{id:'_lists',lists:WLISTS,upd:Date.now()});
 const star = t => `<button class="star" data-w="${t}" aria-pressed="${WL.has(t)}" title="${WL.has(t)?'喺自選清單（撳一下移除）':'加入自選清單'}" aria-label="${WL.has(t)?'移除自選':'加入自選'} ${t}">${WL.has(t)?'★':'☆'}</button>`;
 function wlMsg(t){ const e=$('toast'); e.textContent=t; e.hidden=false; clearTimeout(wlMsg.t); wlMsg.t=setTimeout(()=>e.hidden=true,3500) }
 function wlStars(){ document.querySelectorAll('.star[data-w]').forEach(b=>{const t=b.dataset.w, on=WL.has(t); b.setAttribute('aria-pressed',on); b.textContent=on?'★':'☆';
   b.title=on?'喺自選清單（撳一下移除）':'加入自選清單'; b.setAttribute('aria-label',`${on?'移除自選':'加入自選'} ${t}`)});
   const ws=$('s-wl'); if(ws) ws.textContent=WL.has(ws.dataset.w)?'★ 已喺自選（撳一下移除）':'☆ 加入自選' }
-async function wlReload(){ try{ WL=new Map((await DB.all('watch')).map(r=>[r.id,r])) }catch(e){ WL=new Map() }
+async function wlReload(){ try{ const rows=await DB.all('watch'), m=rows.find(r=>r.id==='_lists');
+    WLISTS=m&&m.lists&&m.lists.length?m.lists:WL_DEF; WL=new Map(rows.filter(r=>!String(r.id).startsWith('_')).map(r=>[r.id,r])) }catch(e){ WL=new Map(); WLISTS=WL_DEF }
+  if(!WLISTS.some(l=>l.id===wlList)) wlList='all';
   wlStars(); if(drawn.watch) drawWatch(); if(drawn.ideas && chgScope==='wl') drawChanges(); if(drawn.market) briefWatch() }
 async function wlPut(r){ r={...r, upd:Date.now()}; try{ await DB.put('watch',r); WL.set(r.id,r); return true }
   catch(e){ wlMsg(DB===LocalDB?'自選清單儲唔到：瀏覽器空間滿咗':'自選清單儲唔到雲端，遲啲再試'); return false } }
-async function wlToggle(t){
+async function wlToggle(t, btn){
+  if(WLISTS.length>1 && btn) return wlPick(t, btn);
   if(WL.has(t)){ try{ await DB.del('watch',t); WL.delete(t) }catch(e){ wlMsg('刪唔到，遲啲再試') } }
   else if(WL.size>=WL_MAX) wlMsg(`自選清單最多 ${WL_MAX} 隻，請先移除啲唔再留意嘅`);
-  else if(await wlPut({id:t, st:'watch', note:'', added:ymd(nyNow())})) wlMsg(`${t} 已加入自選清單（觀察中，${WL.size} / ${WL_MAX} 隻）`);
+  else if(await wlPut({id:t, st:'watch', note:'', added:ymd(nyNow()), ls:[WLISTS[0].id]})) wlMsg(`${t} 已加入「${WLISTS[0].n}」（觀察中，${WL.size} / ${WL_MAX} 隻）`);
   wlStars(); if(drawn.watch) drawWatch(); if(drawn.ideas && chgScope==='wl') drawChanges();
 }
-document.addEventListener('click', e=>{ const b=e.target.closest('.star[data-w],#s-wl'); if(!b) return; e.preventDefault(); e.stopPropagation(); wlToggle(b.dataset.w) });
+document.addEventListener('click', e=>{ const b=e.target.closest('.star[data-w],#s-wl'); if(!b) return; e.preventDefault(); e.stopPropagation(); wlToggle(b.dataset.w, b) });
+// several lists: a small box of tick boxes next to the star; untick every list to remove the stock
+function wlPick(t, btn){
+  const box=$('wlpick'), r=WL.get(t), mine=new Set(r?wlLs(r):[]);
+  box.innerHTML=`<b>${t} 加入邊個清單？</b>${WLISTS.map(l=>`<label><input type="checkbox" value="${l.id}"${mine.has(l.id)?' checked':''}> ${esc(l.n)}</label>`).join('')}
+    <div class="row"><button class="tog" type="button" id="wlp-ok" aria-pressed="true">完成</button></div>`;
+  box.hidden=false; const a=btn.getBoundingClientRect(), w=box.offsetWidth, h=box.offsetHeight;
+  box.style.left=Math.max(8,Math.min(a.left, innerWidth-w-8))+'px'; box.style.top=(a.bottom+6+h>innerHeight?Math.max(8,a.top-h-6):a.bottom+6)+'px';
+  box.querySelectorAll('input').forEach(c=>c.onchange=async()=>{
+    const ls=[...box.querySelectorAll('input:checked')].map(x=>x.value), cur=WL.get(t);
+    if(!ls.length){ if(cur){ try{ await DB.del('watch',t); WL.delete(t); wlMsg(`${t} 已移除`) }catch(e){ wlMsg('刪唔到，遲啲再試') } } }
+    else if(cur) await wlPut({...cur, ls});
+    else if(WL.size>=WL_MAX){ c.checked=false; wlMsg(`自選股最多 ${WL_MAX} 隻，請先移除啲唔再留意嘅`); return }
+    else await wlPut({id:t, st:'watch', note:'', added:ymd(nyNow()), ls});
+    wlStars(); if(drawn.watch) drawWatch(); if(drawn.ideas && chgScope==='wl') drawChanges(); if(drawn.market) briefWatch() });
+  $('wlp-ok').onclick=()=>{box.hidden=true}; box.querySelector('input').focus();
+}
+document.addEventListener('pointerdown', e=>{ const box=$('wlpick'); if(!box.hidden && !box.contains(e.target) && !e.target.closest('.star[data-w],#s-wl')) box.hidden=true });
+// list tabs on 自選: 全部 + each list, ＋ 新增清單, and 改名 / 刪除 for the open list
+function drawLists(all){
+  const cnt=id=>all.filter(r=>wlLs(r).includes(id)).length, cur=WLISTS.find(l=>l.id===wlList);
+  const form=(v,ok)=>`<input id="wln-name" maxlength="20" value="${esc(v)}" placeholder="清單名，例如：長線" aria-label="清單名"><button class="tog" type="button" id="wln-ok" aria-pressed="true">${ok}</button><button class="tog" type="button" id="wln-x">取消</button>`;
+  $('wl-lists').innerHTML='<span class="muted small">清單</span>'+[['all','全部清單',all.length],...WLISTS.map(l=>[l.id,esc(l.n),cnt(l.id)])].map(([id,n,c])=>`<button class="tog" data-l="${id}" aria-pressed="${id===wlList}">${n} <span class="muted">${c}</span></button>`).join('')
+    + (wlEdit==='new'?form('','建立'):`<button class="tog" type="button" id="wln-add">＋ 新增清單</button>`)
+    + (cur&&wlEdit==='ren'?form(cur.n,'改名'):cur?`<button class="tog" type="button" id="wln-ren">改名</button>${WLISTS.length>1?`<button class="tog" type="button" id="wln-del">${wlEdit==='del'?'確定刪除？（只喺呢個清單嘅股票會移除）':'刪除清單'}</button>`:''}`:'');
+  $('wl-lists').querySelectorAll('button[data-l]').forEach(b=>b.onclick=()=>{wlList=b.dataset.l; wlEdit=null; drawWatch()});
+  const go=(k)=>{wlEdit=k; drawWatch(); const i=$('wln-name'); if(i){i.focus(); i.select()}};
+  if($('wln-add')) $('wln-add').onclick=()=>WLISTS.length>=WLN_MAX?wlMsg(`最多 ${WLN_MAX} 個清單`):go('new');
+  if($('wln-ren')) $('wln-ren').onclick=()=>go('ren');
+  if($('wln-x')) $('wln-x').onclick=()=>go(null);
+  if($('wln-name')) $('wln-name').onkeydown=e=>{if(e.key==='Enter') $('wln-ok').click(); if(e.key==='Escape') go(null)};
+  if($('wln-ok')) $('wln-ok').onclick=async()=>{const n=$('wln-name').value.trim(); if(!n){wlMsg('先改個名');return}
+    if(WLISTS.some(l=>l.n===n && !(wlEdit==='ren'&&l.id===wlList))){wlMsg('已經有同名清單');return}
+    const keep=WLISTS;
+    if(wlEdit==='new'){ const id='l'+Date.now().toString(36); WLISTS=[...WLISTS,{id,n}]; wlList=id }
+    else WLISTS=WLISTS.map(l=>l.id===wlList?{...l,n}:l);
+    try{ await wlSaveLists(); wlMsg(wlEdit==='new'?`已建立「${n}」：去選股器、機會頁或者個股頁撳 ☆ 加股票`:'已改名') }catch(e){ WLISTS=keep; wlMsg('儲唔到，遲啲再試') }
+    wlEdit=null; drawWatch()};
+  if($('wln-del')) $('wln-del').onclick=async()=>{ if(wlEdit!=='del'){go('del');return}
+    const id=wlList, keep=WLISTS; WLISTS=WLISTS.filter(l=>l.id!==id);
+    try{ await wlSaveLists();
+      for(const r of [...WL.values()]){ const ls=(r.ls&&r.ls.length?r.ls:[keep[0].id]); if(!ls.includes(id)) continue;
+        const left=ls.filter(x=>x!==id); if(left.length) await wlPut({...r, ls:left}); else { await DB.del('watch',r.id); WL.delete(r.id) } }
+      wlMsg('已刪除清單') }catch(e){ WLISTS=keep; wlMsg('刪唔到，遲啲再試') }
+    wlList='all'; wlEdit=null; wlStars(); drawWatch()};
+}
 function drawWatch(){
   $('wl-where').textContent=DB.where.replace(/（.*$/,'');
-  const all=[...WL.values()].filter(r=>BY[r.id]).sort((a,b)=>(a.added||'').localeCompare(b.added||'')||a.id.localeCompare(b.id));
-  $('wl-filter').innerHTML=[['all','全部'],...Object.entries(WST)].map(([k,l])=>`<button class="tog" data-f="${k}" aria-pressed="${k===wlFilter}">${l} <span class="muted">${k==='all'?all.length:all.filter(r=>r.st===k).length}</span></button>`).join('');
+  const every=[...WL.values()].filter(r=>BY[r.id]).sort((a,b)=>(a.added||'').localeCompare(b.added||'')||a.id.localeCompare(b.id));
+  drawLists(every);
+  const all=wlList==='all'?every:every.filter(r=>wlLs(r).includes(wlList)), many=WLISTS.length>1;
+  $('wl-lh').hidden=!many;
+  $('wl-filter').innerHTML='<span class="muted small">狀態</span>'+[['all','全部'],...Object.entries(WST)].map(([k,l])=>`<button class="tog" data-f="${k}" aria-pressed="${k===wlFilter}">${l} <span class="muted">${k==='all'?all.length:all.filter(r=>r.st===k).length}</span></button>`).join('');
   $('wl-filter').querySelectorAll('button').forEach(b=>b.onclick=()=>{wlFilter=b.dataset.f;drawWatch()});
   const rows=all.filter(r=>wlFilter==='all'||r.st===wlFilter);
   const gone=[...WL.keys()].filter(t=>!BY[t]);
   wlSummary(all.map(r=>BY[r.id]));
   $('wlbody').innerHTML = rows.map(r=>{const s=BY[r.id], ch=stockChanges(s);
     return `<tr><td>${star(s.s)}</td><td style="min-width:150px">${tk(s)}<div class="muted small" style="line-height:1.25">${esc(s.n||'')}</div></td>
+      ${many?`<td>${wlLs(r).map(id=>`<span class="wltag">${esc(WLISTS.find(l=>l.id===id).n)}</span>`).join('')}</td>`:''}
       <td><select data-st="${s.s}" aria-label="${s.s} 狀態">${Object.entries(WST).map(([k,l])=>`<option value="${k}"${k===r.st?' selected':''}>${l}</option>`).join('')}</select></td>
       <td class="r num">${f(s.c)}</td>${pcell(s.chg,2)}<td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span>${s.prsr!=null&&s.prsr!==s.rsr?` <span class="muted small">${s.rsr>s.prsr?'▲':'▼'}${Math.abs(s.rsr-s.prsr)}</span>`:''}</td>
       ${pcell(s.d50)}<td>${ttbar(s.tt)}</td><td>${passKC(s)?'<span class="yes">✓ 符合</span>':'<span class="muted">—</span>'}</td>
@@ -1474,7 +1571,7 @@ function drawWatch(){
       <td class="small">${ch.map(c=>c.txt).join('<br>')||'<span class="muted">—</span>'}</td>
       <td><input data-note="${s.s}" value="${esc(r.note||'')}" placeholder="例如：等突破 150 先睇" aria-label="${s.s} 筆記"></td>
       <td class="num small muted">${(r.added||'').slice(5)}</td></tr>`}).join('')
-    || `<tr><td colspan="13" class="muted">${all.length?'呢個狀態未有股票。':'未有自選股票。喺選股器、機會頁或者個股頁撳 ☆ 加入。'}</td></tr>`;
+    || `<tr><td colspan="14" class="muted">${all.length?'呢個狀態未有股票。':wlList!=='all'?'呢個清單未有股票。喺選股器、機會頁或者個股頁撳 ☆，揀呢個清單加入。':'未有自選股票。喺選股器、機會頁或者個股頁撳 ☆ 加入。'}</td></tr>`;
   if(gone.length) $('wlbody').insertAdjacentHTML('beforeend',`<tr><td colspan="13" class="muted small">${gone.join('、')} 唔喺今日嘅股票池（市值或股價低過門檻），暫時唔顯示，紀錄仍然保留。</td></tr>`);
   $('wlbody').querySelectorAll('select[data-st]').forEach(sel=>sel.onchange=async()=>{const r=WL.get(sel.dataset.st); if(await wlPut({...r,st:sel.value})) {wlMsg('已更新狀態'); drawWatch()}});
   $('wlbody').querySelectorAll('input[data-note]').forEach(inp=>{ inp.onchange=async()=>{const r=WL.get(inp.dataset.note); if(await wlPut({...r,note:inp.value.trim()})) wlMsg('筆記已儲存')};
@@ -1910,7 +2007,7 @@ DRAW.journal = () => {
       const had=new Set(TR.map(x=>x.id)); let n=0, same=0;
       const add=new Set(bak.trades.filter(t=>t&&t.id&&!had.has(t.id)).map(t=>t.id)).size;
       const P0=await DB.all('presets').catch(()=>[]), pAdd=new Set((bak.presets||[]).filter(x=>x&&x.id&&!P0.some(y=>y.id===x.id)).map(x=>x.id)).size,
-            wAdd=new Set((bak.watch||[]).filter(x=>x&&x.id&&!WL.has(x.id)).map(x=>x.id)).size;
+            wAdd=new Set((bak.watch||[]).filter(x=>x&&x.id&&!String(x.id).startsWith('_')&&!WL.has(x.id)).map(x=>x.id)).size;
       if(P0.length+pAdd>PRE_MAX||WL.size+wAdd>WL_MAX){ jMsg(`匯入之後選股預設會有 ${P0.length+pAdd} 個（上限 ${PRE_MAX}）、自選股 ${WL.size+wAdd} 隻（上限 ${WL_MAX}），超過上限。請先刪走啲舊嘅。`); return }
       if(had.size+add>J_MAX){ jMsg(`匯入之後會有 ${(had.size+add).toLocaleString('en-US')} 單，超過上限 ${J_MAX.toLocaleString('en-US')} 單。請先刪走啲舊紀錄。`); return }
       try{ for(const t of bak.trades) if(t&&t.id&&t.sym&&t.open){ if(had.has(t.id)) same++; await DB.put('trades',t); n++ }
