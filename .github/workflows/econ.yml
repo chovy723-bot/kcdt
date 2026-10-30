@@ -1,0 +1,56 @@
+name: Intraday econ refresh
+
+# The daily build runs after the US close. This re-fetches only the economic calendar and news a few times
+# during the US day, so 08:30 / 10:00 New York releases and the 14:00 FOMC show their numbers that evening
+# in Hong Kong. Times cover both summer (UTC-4) and winter (UTC-5) time; GitHub may start a run late.
+on:
+  schedule:
+    - cron: "50 12,13,14,15 * * 1-5"
+    - cron: "20 18,19 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          path: site
+          key: site-latest
+          restore-keys: site-
+      - uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: fundamentals-latest
+          restore-keys: fundamentals-
+      - name: Refresh econ calendar and news
+        run: |
+          if [ ! -f site/data.json ]; then echo "no saved build yet; the next daily build will create one"; exit 1; fi
+          python -m kcdt.refresh
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

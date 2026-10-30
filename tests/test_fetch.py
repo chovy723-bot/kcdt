@@ -95,9 +95,19 @@ def test_nasdaq_time_is_utc_minus_4_all_year():
     assert fetch._nasdaq_utc("2026-11-06", "09:30") == "2026-11-06T13:30Z"  # = 21:30 Hong Kong
 
 
+def test_reported_since():
+    e = 1_800_000_000  # report timestamp
+    hold = fetch.AFTER_REPORT
+    assert not fetch.reported_since({"edate": e, "_ts": e - 86400}, e + hold - 1)  # too soon: data not out yet
+    assert fetch.reported_since({"edate": e, "_ts": e - 86400}, e + hold)          # fetched before the report
+    assert not fetch.reported_since({"edate": e, "_ts": e + hold + 60}, e + 2 * hold)  # already refreshed
+    assert not fetch.reported_since({"_ts": 0}, e)                                  # no date known
+
+
 if __name__ == "__main__":
     test_economic_calendar_dates_rows_one_day_back()
     test_econ_labels()
     test_econ_labels_remembered_and_notes()
     test_nasdaq_time_is_utc_minus_4_all_year()
+    test_reported_since()
     print("ok")

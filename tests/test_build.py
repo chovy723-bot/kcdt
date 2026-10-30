@@ -43,7 +43,8 @@ def fake_fund(tickers, seed=2):
                       eq=float(rng.uniform(-0.5, 1.5)), pe=float(rng.uniform(5, 80)), ysec=None,
                       ipo=1.2e12, edate=1.8e9, revq=rev, epsq=[1.5, 1.2, 1.0, 0.8, 0.7], reva=[5e9, 4e9, 3e9],
                       epsa=[4.0, 3.0, 2.5], epsh=[1.5, 1.2, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4],
-                      efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9)
+                      efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9,
+                      qend="2026-09-30", erep=1.7616e9 + 86400)
     return out
 
 
@@ -79,7 +80,8 @@ def test_build():
     assert set(d["panic"]) == {"on", "day"}
     assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
     assert all(1 <= s["prsr"] <= 99 and "pd50" in s and "px50" in s for s in d["stocks"])
-    assert f0["fts"]
+    assert f0["fts"] and f0["qend"] == "2026-09-30" and f0["erep"] >= f0["fts"]  # reported after the last fetch
+    assert len(d["leaders"]) == 30 and set(d["leaders"]) <= set(DOW30)
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
     assert len(pages) == 1105 and len(nv["d"]) == 260 and nv["d"][-1] == "2026-10-27"
@@ -88,7 +90,7 @@ def test_build():
 
 
 if __name__ == "__main__":
-    import pathlib
+    import json, pathlib, sys
     from kcdt import __main__ as m
     d, pages = test_build()
     import datetime as dt
@@ -111,5 +113,44 @@ if __name__ == "__main__":
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
+    (m.OUT / "data.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    # The intraday refresh rebuilds the page from data.json; an empty fetch keeps the last good copy
+    from kcdt import refresh
+    refresh.economic_calendar, refresh.headlines = (lambda **k: []), (lambda: [])
+    refresh.main()
+    assert json.loads((m.OUT / "data.json").read_text())["econ"] == d["econ"]
     m.write_stock_pages(pages)
+    # A past day in the history folder plus today's, so the 歷史 view has two dates to pick
+    import tempfile
+    hist = pathlib.Path(tempfile.mkdtemp())
+    old = m.snapshot(d)
+    past = (dt.date.fromisoformat(d["asof"]) - dt.timedelta(days=4)).isoformat()
+    old.update(d=past, kc=old["kc"][:3], kc_in=old["kc"][:1] and [old["kc"][0][0]], kc_out=["ZZZ"])
+    (hist / f"{past}.json").write_text(json.dumps(old, ensure_ascii=False))
+    m.keep_history(d, hist)
+    days = json.loads((m.OUT / "h" / "index.json").read_text())
+    assert days[0] == past and days[-1] == d["asof"], days
+    # A fake 盤前需知 so the page has something to show
+    from kcdt import premarket as pm
+    day = lambda v, p: dict(v=v, d=d["asof"], chg=round(v - p, 2), pct=round((v / p - 1) * 100, 2))
+    mkt = [dict(k="VIX", n="VIX 恐慌指數", sym="^VIX", link=pm.QUOTE + "^VIX", eod=True, **day(17.2, 16.91)),
+           dict(k="US10Y", n="美國 10 年期國債息率", u="%", src="US Treasury", link="https://home.treasury.gov/", eod=True, **day(4.98, 5.05))]
+    world = [dict(k="HSI", n="恒生指數", sym="^HSI", link=pm.QUOTE + "^HSI", eod=True, **day(22958.65, 23094.83))]
+    st = d["stocks"]
+    idx = [dict(k="NDX", n="Nasdaq-100 指數", sym="^NDX", link=pm.QUOTE + "^NDX", eod=True, **day(25000.5, 25300.1)),
+           dict(k="SPX", n="標普 500 指數", sym="^GSPC", link=pm.QUOTE + "^GSPC", eod=True, **day(6800.2, 6790.0))]
+    etf = [dict(k="QQQ", n="Nasdaq-100 ETF", link=pm.QUOTE + "QQQ", c=610.0, v=605.2, pct=-0.79, t=d["built"], when="pre")]
+    brief = dict(d=pd.Timestamp(now).tz_convert("America/New_York").strftime("%Y-%m-%d"), t=d["built"], asof=d["asof"], idx=idx, etf=etf, mkt=mkt, world=world, econ=d["econ"],
+                 earn_today=[dict(s=x["s"], n=x.get("n"), tm=tm, est=1.23, ndx=bool(x.get("ndx")), mcap=x.get("mcap"))
+                             for x, tm in zip([x for x in st if x.get("ndx")][:5], ["bmo", "amc", "amc", None, "bmo"])],
+                 earn_done=[dict(s=x["s"], n=x.get("n"), d=d["asof"], tm="amc", ndx=True, mcap=x.get("mcap"), est=1.96, rep=1.89, sur=-3.54)
+                            for x in [x for x in st if x.get("ndx")][5:7]],
+                 movers={x["s"]: dict(c=x["c"], v=round(x["c"] * (1 + (i % 9 - 4) / 100), 2), pct=float(i % 9 - 4),
+                                      t=d["built"], when="pre") for i, x in enumerate([x for x in st if x.get("ndx")])},
+                 score=[38, 50])
+    pm.publish(brief, hist)
+    assert json.loads((m.OUT / "pm" / "index.json").read_text()) == [brief["d"]]
+    assert m.keep_history(d, hist) == brief["t"]  # the next daily build carries the briefs over
+    d["pm_t"] = brief["t"]
+    (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
     print("ok", d["asof"], d["hist"][-1]["score"], len(d["stocks"]), d["breadth"])

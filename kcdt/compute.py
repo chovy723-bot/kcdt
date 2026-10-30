@@ -116,9 +116,8 @@ def fundamentals_row(f):
     ipo_years = None
     if f.get("ipo"):
         ipo_years = (pd.Timestamp.now().timestamp() - f["ipo"] / 1000) / (365.25 * 86400)
-    edate = None
-    if f.get("edate"):
-        edate = pd.Timestamp(f["edate"], unit="s").strftime("%Y-%m-%d")
+    day = lambda ts: pd.Timestamp(ts, unit="s").strftime("%Y-%m-%d") if ts else None
+    edate = day(f.get("edate"))
     return dict(
         mcap=_f((f.get("mcap") or 0) / 1e9, 2) if f.get("mcap") else None,  # US$ billions
         beta=_f(f.get("beta")), inst=_f((f["inst"] * 100) if f.get("inst") is not None else None, 1),
@@ -130,7 +129,7 @@ def fundamentals_row(f):
         g3r=_f(g3r, 1), g3e=_f(g3e, 1),
         yr=rising(reva) and rising(f.get("epsa") or []) if f.get("epsa") else None,
         e0=_f(pct(efc[0]), 1), e1=_f(pct(efc[1]), 1), r0=_f(pct(rfc[0]), 1), r1=_f(pct(rfc[1]), 1),
-        ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"),
+        ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"), qend=f.get("qend"), erep=day(f.get("erep")),
     )
 
 
@@ -204,8 +203,8 @@ def build(px, meta, fund=None, fng=None, earn=None):
         if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market
             row["edate"], row["etime"] = earn[t]
             row["econf"] = True  # on Nasdaq's dated calendar; Yahoo-only dates are estimates
-        if row.get("edate") and row["edate"] < asof:  # Yahoo sometimes still holds the last report
-            row["elast"], row["edate"], row["etime"] = row["edate"], None, None
+        if row.get("edate") and row["edate"] < asof:  # an expected date that has passed: may or may not have reported
+            row["eold"], row["edate"], row["etime"] = row["edate"], None, None
         stocks.append(row)
 
     # ---- breadth: all stocks and Nasdaq-100 only ----
@@ -263,7 +262,7 @@ def build(px, meta, fund=None, fng=None, earn=None):
                      ndx=breadth([s for s in stocks if s["ndx"]])),
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
-        sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng,
+        sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng, leaders=[t for t in DOW30 if t in close],
         nfund=sum(1 for s in stocks if s.get("mcap") is not None))
 
 
