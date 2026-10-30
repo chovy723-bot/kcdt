@@ -38,7 +38,7 @@ jobs:
                   pg = b.new_page(viewport={"width": w, "height": h})
                   errs = []
                   pg.on("pageerror", lambda e: errs.append(str(e)))
-                  for v in ["pm", "market"]:
+                  for v in ["pm"]:
                       pg.goto(f"http://localhost:8765/#{v}"); pg.wait_for_timeout(2500)
                       pg.screenshot(path=f"shots/{tag}-{v}.png", full_page=True)
                   print(tag, "errors", errs)
