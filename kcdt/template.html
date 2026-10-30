@@ -1512,6 +1512,7 @@ DRAW.about = () => {
     ['業績日','Nasdaq 業績日曆（已排期）、Yahoo Finance（預計）',hkFmt(D.built),`${ed.length.toLocaleString('en-US')} 隻有日期，${conf.toLocaleString('en-US')} 隻已排期`, past?spill(1,`${past} 隻原預計日期已過，待核實`):spill(0,'正常')],
     ['美國經濟數據','Nasdaq、ForexFactory（對照按月／按年）',hkFmt(D.econ_t||D.news_t),`今個星期同下個星期 ${E.length} 項`, late||unc?spill(1,[late&&`${late} 項等數據源更新`,unc&&`${unc} 項按月／按年未確認`].filter(Boolean).join('，')):spill(0,'正常')],
     ['市場新聞','Nasdaq',hkFmt(D.news_t),`${(D.news||[]).length} 條`, (D.news||[]).length?spill(0,'正常'):spill(2,'拎唔到')],
+    ['盤前需知','Yahoo Finance（延遲報價）、US Treasury、Nasdaq',D.pm_t?hkFmt(D.pm_t):'—','美股交易日紐約時間約 05:50 整理一次', D.pm_t?spill(0,'正常'):spill(1,'未有')],
     ['恐懼與貪婪指數','CNN',hkFmt(D.built),D.fng?`${Math.round(D.fng.score)}`:'—', D.fng?spill(0,'正常'):spill(2,'拎唔到')],
     ['歷史快照','KCDT 每日收市後保存','<span id="ab-hx-t">—</span>','<span id="ab-hx">讀取中…</span>','']];
   $('dstbody').innerHTML=rows.map(r=>`<tr><td><b>${r[0]}</b></td><td class="small" data-l="來源">${r[1]}</td><td class="num small" data-l="最後更新">${r[2]}</td><td class="small" data-l="覆蓋">${r[3]}</td><td>${r[4]}</td></tr>`).join('');

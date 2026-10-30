@@ -154,4 +154,7 @@ if __name__ == "__main__":
                  score=[38, 50])
     pm.publish(brief, hist)
     assert json.loads((m.OUT / "pm" / "index.json").read_text()) == [brief["d"]]
+    assert m.keep_history(d, hist) == brief["t"]  # the next daily build carries the briefs over
+    d["pm_t"] = brief["t"]
+    (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
     print("ok", d["asof"], d["hist"][-1]["score"], len(d["stocks"]), d["breadth"])
