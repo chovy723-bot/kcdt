@@ -6,21 +6,17 @@
 <style>
 /* Layout: one page with tabs (大市 / 機會 / 選股器 / 業績) plus a stock page at #s/TICKER. */
 :root{
-  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202b; --muted:#465260; --line:#d9dfe6; --soft:#e9edf2;
-  --accent:#2a4d8f;
-  --cool:#1f8a78; --warm:#a86a00; --hot:#c4372d;
-  --up:#13895a; --down:#c4372d; --flat:#8a96a3; --tile-ink:#ffffff;
+  /* one dark-green theme (KC, round 8) */
+  --bg:#0c1210; --side:#111a15; --panel:#151f18; --raise:#1b2a1e; --ink:#e5ebe6; --muted:#a5b4aa; --line:#2b3b2e; --soft:#1f2c22;
+  --accent:#b9ec8f; --link:#8fd88a; --sel:#273b2a;
+  --cool:#45c4a6; --warm:#e3b341; --hot:#f0675c;
+  --up:#4cc985; --down:#f0675c; --flat:#3d4c41; --tile-ink:#ffffff;
   --f-logo:"Noto Serif HK","Songti TC",serif;  /* the KCDT logo only */
   --f-display:var(--f-body);
   --f-body:"Noto Sans HK","Noto Sans TC","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
   --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#10151c; --panel:#171e27; --ink:#e6ebf1; --muted:#97a3b1; --line:#2a3440; --soft:#1f2832;
-  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; --flat:#3a4552; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#10151c; --panel:#171e27; --ink:#e6ebf1; --muted:#97a3b1; --line:#2a3440; --soft:#1f2832;
-  --accent:#8fb0ec; --cool:#3cc0a6; --warm:#e3a838; --hot:#f0675c; --up:#3cc48a; --down:#f0675c; --flat:#3a4552; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
 .wrap{max-width:1180px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
 h1,h2,h3{text-wrap:balance;margin:0}
@@ -28,11 +24,12 @@ h1{font-family:var(--f-logo);font-weight:900;font-size:clamp(26px,4vw,34px);lett
 h2{font-family:var(--f-body);font-weight:700;font-size:21px}
 h3{font-size:15px;font-weight:700}
 p{margin:0}
-a{color:var(--accent)}
+a{color:var(--link)}
 .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .small{font-size:13px}
 .eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.kicker{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .up{color:var(--up)} .down{color:var(--down)}
 
 /* header, search, tabs */
@@ -48,14 +45,31 @@ a{color:var(--accent)}
 nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 nav.tabs a{flex:none;text-decoration:none;color:var(--muted);padding:8px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;font-weight:500;white-space:nowrap}
 nav.tabs a:hover{color:var(--ink)}
-nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs>div{display:contents}
+nav.tabs .side-brand,nav.tabs .side-foot{display:none}
+@media (min-width:1100px){
+  .wrap{max-width:1440px;grid-template-columns:200px minmax(0,1fr);column-gap:32px;padding-left:0}
+  .wrap>*{grid-column:2}
+  .wrap{row-gap:0}.wrap>:not(nav){margin-bottom:22px}
+  nav.tabs{grid-column:1;grid-row:1/span 30;align-self:stretch;flex-direction:column;gap:2px;border:0;border-right:1px solid var(--line);
+    background:var(--side);padding:20px 12px;margin-block:-16px -56px;overflow:visible;position:relative}
+  nav.tabs>div{position:sticky;top:20px;display:flex;flex-direction:column;gap:2px}
+  nav.tabs a{border:0;margin:0;padding:9px 14px;border-radius:9px;font-size:14px}
+  nav.tabs a[aria-current="page"]{background:var(--sel);color:var(--accent);box-shadow:inset 0 0 0 1px #3f5f3b}
+  nav.tabs .side-brand{display:block;padding:4px 6px 18px;text-decoration:none}
+  nav.tabs .side-brand h1{color:var(--accent);font-size:30px}
+  nav.tabs .side-foot{display:block;margin-top:18px;padding:12px 6px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .top .brand{display:none}
+}
 nav.tabs a.stk{font-family:var(--f-data)}
 @media (max-width:640px){nav.tabs{flex-wrap:wrap;overflow:visible;row-gap:0}nav.tabs a{padding:8px 10px}}
 .view{display:grid;gap:22px}.view>*,#hx{min-width:0}
 
 section{display:grid;gap:12px}
 .sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.panel.hero{background:linear-gradient(135deg,var(--raise),var(--panel));border-color:#2f4632}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-family:var(--f-data);font-size:13px}
 .grid line{stroke:var(--soft)}
@@ -71,8 +85,9 @@ a.tk:hover{color:var(--accent);text-decoration:underline}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button.tog,label.tog{font:inherit;font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
-button.tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button.tog,label.tog{font:inherit;font-size:13px;padding:4px 12px;border-radius:8px;border:1px solid #35483a;background:#1d2a20;color:var(--ink);cursor:pointer}
+button.tog:hover,label.tog:hover{border-color:#4a6450}
+button.tog[aria-pressed="true"]{background:var(--sel);border-color:#4f7a45;color:var(--accent)}
 button.tog:focus-visible,th button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 th button[data-active="true"]{color:var(--ink);font-weight:700}
@@ -126,6 +141,22 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .wl td input{font:inherit;font-size:13px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:100%;min-width:160px;box-sizing:border-box}
 @media (max-width:640px){table.dst thead{display:none}table.dst tr{display:block;padding:8px 0;border-bottom:1px solid var(--soft)}
   table.dst td{display:block;border:0;padding:2px 4px}table.dst td[data-l]::before{content:attr(data-l)'：';color:var(--muted)}}
+/* 盤前需知 */
+#pm,#hx{display:grid;gap:22px}
+select{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px solid #35483a;background:#1d2a20;color:var(--ink)}
+.pmhero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px}
+.pmhero h3{font-size:24px;margin:10px 0 8px}
+.pmhero ul{margin:0;padding-left:20px;display:grid;gap:4px}
+.pmstat{border-left:1px solid var(--line);padding-left:20px;display:grid;gap:14px;align-content:center}
+.pmstat b{display:block;font-family:var(--f-data);font-size:30px;color:var(--accent);font-weight:500;line-height:1.1}
+.chip{display:inline-block;font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid #3f5f3b;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{display:grid;gap:6px;align-content:start}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.card .big{font-family:var(--f-data);font-size:28px;line-height:1.2;color:var(--ink)}
+.card .sub{font-size:13px;color:var(--muted)}
+.card a{font-size:13px}
+@media (max-width:640px){.pmhero{grid-template-columns:1fr}.pmstat{border-left:0;padding-left:0;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);padding-top:12px}}
 .wlsum{margin-bottom:12px}.wlsum h3{margin:0 0 8px;font-size:15px}
 .wlgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .wlg{border-left:3px solid var(--line);padding-left:10px}.wlg.g-dn{border-color:var(--down)}.wlg.g-up{border-color:var(--up)}.wlg.g-earn{border-color:var(--warm)}
@@ -268,8 +299,10 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
   <div class="stamps" id="stamps"></div>
   <div class="stale" id="stale" role="alert" hidden></div>
 
-  <nav class="tabs" aria-label="頁面">
+  <nav class="tabs" aria-label="頁面"><div>
+    <a class="side-brand" href="#market"><h1>KCDT</h1><span class="eyebrow">美股趨勢溫度計</span></a>
     <a href="#market" data-v="market">大市</a>
+    <a href="#pm" data-v="pm">盤前需知</a>
     <a href="#ideas" data-v="ideas">機會</a>
     <a href="#watch" data-v="watch">自選</a>
     <a href="#screener" data-v="screener">選股器</a>
@@ -279,11 +312,12 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <a href="#history" data-v="history">歷史</a>
     <a href="#about" data-v="about">說明及數據狀態</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
-  </nav>
+    <p class="side-foot">只供數據參考及教育用途，唔係投資建議。</p>
+  </div></nav>
 
   <!-- ===== 大市 ===== -->
   <main class="view" id="v-market">
-    <section class="panel brief" aria-labelledby="h-brief">
+    <section class="panel hero brief" aria-labelledby="h-brief">
       <div class="sechead"><h2 id="h-brief">今日三項重點</h2><span class="muted small" id="brief-d"></span></div>
       <ul id="brief"></ul>
       <p class="small" id="brief-wl" hidden></p>
@@ -526,6 +560,16 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <dialog id="j-img"><img alt="交易截圖"><form method="dialog"><button class="tog">關閉</button></form></dialog>
   </main>
 
+  <!-- ===== 盤前需知 ===== -->
+  <main class="view" id="v-pm" hidden>
+    <section aria-labelledby="h-pm">
+      <div class="sechead"><div><p class="kicker">Before the open</p><h2 id="h-pm" style="font-size:28px">交易前，先睇清楚。</h2></div>
+        <div class="controls"><span class="muted small">報告日期</span><button class="tog" id="pm-prev" aria-label="前一日">◀</button><select id="pm-day" aria-label="揀報告日期"></select><button class="tog" id="pm-next" aria-label="後一日">▶</button></div></div>
+      <p class="muted small">每個美股交易日紐約時間約 05:50 整理（香港時間夏令 17:50、冬令 18:50），即開市前大約 3 個半鐘。免費公開來源，唔係即時行情；每項都寫明數據時間同來源。</p>
+      <div id="pm"></div>
+    </section>
+  </main>
+
   <!-- ===== 歷史 ===== -->
   <main class="view" id="v-history" hidden>
     <section aria-labelledby="h-hist">
@@ -671,7 +715,7 @@ $('q').oninput = e => { $('q').setCustomValidity(''); if((!e.inputType || e.inpu
 const drawn = {};
 function route(){
   const h = decodeURIComponent(location.hash.slice(1)) || 'market';
-  let v = h.startsWith('s/') ? 'stock' : (['market','ideas','watch','screener','earnings','news','journal','history','about'].includes(h)?h:'market');
+  let v = h.startsWith('s/') ? 'stock' : (['market','pm','ideas','watch','screener','earnings','news','journal','history','about'].includes(h)?h:'market');
   if(v==='stock' && !BY[h.slice(2)]) v='market';
   document.querySelectorAll('.view').forEach(x=>x.hidden = x.id!=='v-'+v);
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
@@ -1321,6 +1365,93 @@ function wlSummary(list){
   $('wl-sum').hidden=!list.length;
 }
 DRAW.watch = () => drawWatch();
+
+// ---------- 盤前需知 ----------
+// pm/index.json lists the days; pm/DATE.json is that morning's brief (kcdt/premarket.py)
+let PM=[];
+const hkHM = iso => new Date(iso).toLocaleTimeString('en-GB',{timeZone:'Asia/Hong_Kong',hour:'2-digit',minute:'2-digit',hour12:false});
+const pmKey = e => e.imp===3 || ECON_KEY.test(e.e||'');
+function pmLines(b){
+  const L=[], F=b.fut||{}, nq=F.NQ, es=F.ES, done=e=>e.a!=null;
+  if(nq&&nq.pct!=null) L.push(`<b>期貨</b>：NQ 報 ${f(nq.v)}，較上一節收市 <span class="${cls(nq.pct)}">${sgn(nq.pct,2)}%</span>${nq.on_h!=null?`（隔夜高 ${f(nq.on_h)}／低 ${f(nq.on_l)}）`:''}${es&&es.pct!=null?`；ES <span class="${cls(es.pct)}">${sgn(es.pct,2)}%</span>`:''}。`);
+  const out=(b.econ||[]).filter(e=>pmKey(e)&&done(e)), due=(b.econ||[]).filter(e=>pmKey(e)&&!done(e)&&e.u&&Date.parse(e.u)>Date.parse(b.t));
+  if(out.length) L.push(`<b>已公布</b>：${out.slice(0,3).map(e=>`${econName(e)} ${esc(e.a)}${e.c?`（預期 ${esc(e.c)}）`:''}`).join('；')}。`);
+  if(due.length) L.push(`<b>今日待公布</b>：${due.slice(0,3).map(e=>`${hkHM(e.u)} ${econName(e)}`).join('；')}（香港時間）。`);
+  else L.push('<b>今日待公布</b>：今日冇重要經濟數據。');
+  if((b.earn_done||[]).length) L.push(`<b>已出業績</b>：${b.earn_done.slice(0,3).map(e=>{const m=(b.movers||{})[e.s]; return `${e.s} EPS ${e.rep}（預期 ${e.est??'—'}）${m?`，${m.when==='pre'?'盤前':'盤後'} <span class="${cls(m.pct)}">${sgn(m.pct,1)}%</span>`:''}`}).join('；')}。`);
+  const nd=(b.earn_today||[]).filter(e=>e.ndx);
+  if(nd.length) L.push(`<b>今日 Nasdaq-100 出業績</b>：${nd.slice(0,6).map(e=>`${e.s}${ETIME[e.tm]?`（${ETIME[e.tm]}）`:''}`).join('、')}${nd.length>6?` 等 ${nd.length} 隻`:''}。`);
+  const w=[...WL.keys()], we=(b.earn_today||[]).filter(e=>WL.has(e.s)).map(e=>`${e.s} 今日${ETIME[e.tm]||''}出業績`),
+    wm=w.map(t=>[t,(b.movers||{})[t]]).filter(([t,m])=>m&&Math.abs(m.pct)>=3).map(([t,m])=>`${t} ${m.when==='pre'?'盤前':'盤後'} ${sgn(m.pct,1)}%`);
+  if(we.length||wm.length) L.push(`<b>自選</b>：${we.concat(wm).slice(0,5).join('；')}。`);
+  if(b.score&&b.score.length) L.push(`<b>風險分</b>（${b.asof} 收市）：大市 ${b.score[0]}${b.score[1]!=null?`、科技 ${b.score[1]}`:''}／100，規則分數，唔係跌市機率。`);
+  return L;
+}
+const pmCard = (title, tag, big, sub, link, linkTxt) => `<div class="panel card"><div class="hd"><span>${title}</span>${tag?`<span class="chip">${tag}</span>`:''}</div><div class="big">${big}</div><div class="sub">${sub}</div>${link?`<a href="${link}" target="_blank" rel="noopener">${linkTxt} ↗</a>`:''}</div>`;
+function pmFut(k, x){
+  if(!x||x.v==null) return '';
+  const t=`${hkFmt(x.t)} 香港時間 · ${x.sym} · Yahoo 延遲報價`;
+  return pmCard(`${k} 最新報價`,'延遲',`${f(x.v)} <span class="small ${cls(x.pct)}">${sgn(x.pct,2)}%</span>`,`較上一節收市 ${f(x.prev)}（${sgn(x.chg,2)} 點）<br>${t}`,x.link,`Yahoo ${x.sym}`)
+    + (x.on_h!=null?pmCard(`${k} 隔夜高／低`,'Globex',`${f(x.on_h)} ／ ${f(x.on_l)}`,`由 ${hkFmt(x.on_from)}（紐約 18:00）開始計，到 ${hkFmt(x.t)}<br>5 分鐘線計，唔係交易所官方數字`,'',''):'')
+    + (x.rth?pmCard(`${k} 上一個正常交易時段`,'日內',`${f(x.rth.h)} ／ ${f(x.rth.l)}`,`${x.rth.d} 紐約 09:30–16:00 · 開 ${f(x.rth.o)} · 收 ${f(x.rth.c)}<br>5 分鐘線計，唔係 CME 官方結算價`,'',''):'');
+}
+const pmDaily = x => pmCard(x.n, '日終', `${f(x.v)}${x.u||''} ${x.pct!=null?`<span class="small ${cls(x.pct)}">${x.u==='%'?sgn(x.chg,2)+' 個百分點':sgn(x.pct,2)+'%'}</span>`:''}`, `${x.d} 收市 · ${x.src||'Yahoo'} 日線`, x.link, x.src?`${x.src} 每日息率`:`Yahoo ${x.sym}`);
+let pmScope='ndx';
+function pmEarn(b){
+  const M=b.movers||{}, pick=e=>pmScope==='all'||(pmScope==='ndx'?e.ndx:WL.has(e.s));
+  const mv=s=>{const m=M[s]; return m?`<span class="${cls(m.pct)}">${sgn(m.pct,1)}%</span> <span class="muted small">${m.when==='pre'?'盤前':'盤後'}</span>`:'<span class="muted">—</span>'};
+  const done=(b.earn_done||[]).filter(pick), today=(b.earn_today||[]).filter(pick);
+  const nm=s=>BY[s]?tk(BY[s]):`<span class="num">${s}</span>`;
+  return `<div class="controls" id="pm-scope">${[['ndx','Nasdaq-100'],['wl','自選'],['all','全部（市值 100 億美元以上先有 EPS）']].map(([k,l])=>`<button class="tog" data-k="${k}" aria-pressed="${k===pmScope}">${l}</button>`).join('')}</div>
+  <div class="cols2" style="align-items:start">
+    <div class="panel tablewrap"><h3>已出業績 <span class="muted small">隔晚盤後同今早盤前</span></h3><table><thead><tr><th>代號</th><th>時間</th><th class="r">EPS 實際</th><th class="r">預期</th><th class="r">差距</th><th class="r">延長時段</th></tr></thead><tbody>${done.map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${e.d.slice(5)} ${ETIME[e.tm]||''}</td><td class="r num">${f(e.rep)}</td><td class="r num">${f(e.est)}</td><td class="r num ${cls(e.sur)}">${e.sur==null?'—':sgn(e.sur,1)+'%'}</td><td class="r num">${mv(e.s)}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">冇（或者數據源未更新）</td></tr>'}</tbody></table></div>
+    <div class="panel tablewrap"><h3>今日出業績 <span class="muted small">${today.length} 隻</span></h3><table><thead><tr><th>代號</th><th>時間</th><th>公司</th><th class="r">EPS 預期</th></tr></thead><tbody>${today.sort((a,b)=>((ETORD[a.tm]??2)-(ETORD[b.tm]??2))).map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${ETIME[e.tm]||'未公佈'}</td><td class="small">${esc(e.n||'')}</td><td class="r num">${e.est==null?'—':f(e.est)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">冇</td></tr>'}</tbody></table></div>
+  </div>`;
+}
+function pmMovers(b){
+  const M=b.movers||{}, rows=Object.entries(M).map(([s,m])=>({s,...m})).filter(x=>x.pct!=null);
+  const list=(t,xs)=>`<div class="panel tablewrap"><h3>${t}</h3><table><thead><tr><th>代號</th><th class="r">昨日收市</th><th class="r">最新</th><th class="r">變動</th><th>時間（香港）</th></tr></thead><tbody>${xs.map(x=>`<tr><td>${BY[x.s]?tk(BY[x.s]):x.s}</td><td class="r num">${f(x.c)}</td><td class="r num">${f(x.v)}</td><td class="r num ${cls(x.pct)}">${sgn(x.pct,2)}%</td><td class="small">${x.when==='pre'?'盤前':'盤後'} ${hkFmt(x.t)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">冇數據</td></tr>'}</tbody></table></div>`;
+  const nd=rows.filter(x=>BY[x.s]&&BY[x.s].ndx).sort((a,b)=>b.pct-a.pct), wl=rows.filter(x=>WL.has(x.s)).sort((a,b)=>b.pct-a.pct);
+  const miss=[...WL.keys()].filter(t=>!M[t]);
+  return `<div class="cols2" style="align-items:start">${list('Nasdaq-100 升得最多',nd.slice(0,8))}${list('Nasdaq-100 跌得最多',nd.slice(-8).reverse())}</div>
+    ${WL.size?list(`自選股 <span class="muted small">${wl.length} 隻有延長時段報價</span>`,wl)+(miss.length?`<p class="muted small">${miss.join('、')} 冇延長時段報價（只計 Nasdaq-100、符合 KC 條件、市值 500 億美元以上同今日出業績嘅股票）。</p>`:''):''}`;
+}
+function pmEcon(b){
+  const E=(b.econ||[]).filter(e=>pmKey(e)).sort((a,c)=>(Date.parse(a.u)||0)-(Date.parse(c.u)||0));
+  return `<div class="panel tablewrap"><table><thead><tr><th>時間（香港）</th><th>數據</th><th>狀態</th><th class="r">實際</th><th class="r">預期</th><th class="r">前值</th></tr></thead><tbody>${E.map(e=>`<tr><td class="num small">${e.u?hkFmt(e.u):'—'}</td><td>★ ${econName(e)}${e.ref?`<div class="muted small">統計期：${e.ref}</div>`:''}</td><td class="small">${e.a!=null?'<span class="up">已公布</span>':'<span class="muted">待公布</span>'}</td><td class="r num"><b>${e.a!=null?esc(e.a):'—'}</b></td><td class="r num">${e.c!=null?esc(e.c):'—'}</td><td class="r num">${e.p!=null?esc(e.p):'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">今日同隔晚冇重要經濟數據。</td></tr>'}</tbody></table></div>
+  <p class="muted small">只列重要數據（★）。之後有冇更新數字，睇 <a href="#news">經濟及新聞</a>（數據公布後會再擷取）。</p>`;
+}
+async function pmShow(d){
+  const sel=$('pm-day'); sel.value=d; const i=PM.indexOf(d);
+  $('pm-prev').disabled=i<=0; $('pm-next').disabled=i>=PM.length-1;
+  let b; try{ b=await (await fetch(`pm/${d}.json`)).json() }catch(e){ $('pm').innerHTML='<div class="panel muted">讀唔到呢日嘅盤前報告，遲啲再試。</div>'; return }
+  if(sel.value!==d) return;
+  const F=b.fut||{}, L=pmLines(b), got=[F.NQ,F.ES,...(b.mkt||[]),...(b.world||[])].filter(x=>x&&x.v!=null).length;
+  const draw=()=>{
+    $('pm').innerHTML = `<div class="panel hero pmhero"><div><span class="chip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <p class="muted small" style="margin-top:8px">資料截至 ${hkFmt(b.t)}（香港時間）· 由下面數據自動整理，唔係建議</p></div>
+      <div class="pmstat"><div><b>${(b.econ||[]).filter(pmKey).length}</b><span class="muted small">重要經濟數據</span></div><div><b>${got}/${2+(b.mkt||[]).length+(b.world||[]).length}</b><span class="muted small">已取得市場項目</span></div></div></div>
+      <section><p class="kicker">Futures</p><h2>期貨</h2><div class="cards">${pmFut('NQ',F.NQ)}${pmFut('ES',F.ES)}</div></section>
+      <section><p class="kicker">Markets</p><h2>波動、美元、息率、商品</h2><div class="cards">${(b.mkt||[]).map(pmDaily).join('')}</div></section>
+      <section><p class="kicker">Asia &amp; Europe</p><h2>亞洲同歐洲股市</h2><div class="cards">${(b.world||[]).map(pmDaily).join('')}</div>
+        <p class="muted small">亞洲收市係香港時間下晝；歐洲未收市時顯示上一個收市價（睇日期）。</p></section>
+      <section><p class="kicker">Economic calendar</p><h2>重要經濟數據</h2>${pmEcon(b)}</section>
+      <section><p class="kicker">Earnings</p><h2>業績</h2>${pmEarn(b)}</section>
+      <section><p class="kicker">Extended hours</p><h2>盤前／盤後變動</h2>${pmMovers(b)}
+        <p class="muted small">同昨日正常交易時段收市比較。紐約 04:00 前未有盤前成交，就用昨晚盤後最後報價。Yahoo 延遲報價。</p></section>`;
+    $('pm-scope').querySelectorAll('button').forEach(x=>x.onclick=()=>{pmScope=x.dataset.k;draw()});
+  };
+  draw();
+}
+DRAW.pm = async () => {
+  try{ PM=await (await fetch('pm/index.json',{cache:'no-cache'})).json() }catch(e){ PM=[] }
+  if(!PM.length){ $('pm').innerHTML='<div class="panel muted">第一份盤前需知會喺下一個美股交易日紐約時間約 05:50（香港時間夏令 17:50、冬令 18:50）出現。</div>'; ['pm-prev','pm-next','pm-day'].forEach(i=>$(i).hidden=true); return }
+  $('pm-day').innerHTML=[...PM].reverse().map(d=>`<option value="${d}">${d}</option>`).join('');
+  $('pm-day').onchange=()=>pmShow($('pm-day').value);
+  $('pm-prev').onclick=()=>{const i=PM.indexOf($('pm-day').value); if(i>0) pmShow(PM[i-1])};
+  $('pm-next').onclick=()=>{const i=PM.indexOf($('pm-day').value); if(i<PM.length-1) pmShow(PM[i+1])};
+  pmShow(PM[PM.length-1]);
+};
 
 // ---------- 歷史 ----------
 // h/index.json lists the saved days; h/DATE.json is what the page showed after that close

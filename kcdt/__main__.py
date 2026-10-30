@@ -68,6 +68,13 @@ def keep_history(data, folder):
     for d in days:
         (out / f"{d}.json").write_bytes((folder / f"{d}.json").read_bytes())
     (out / "index.json").write_text(json.dumps(days), encoding="utf-8")
+    # 盤前需知 briefs (written by kcdt.premarket) are kept in the same folder under pm/
+    pm, pm_out = folder / "pm", OUT / "pm"
+    if pm.is_dir():
+        pm_out.mkdir(parents=True, exist_ok=True)
+        for f in pm.glob("20*.json"):
+            (pm_out / f.name).write_bytes(f.read_bytes())
+        (pm_out / "index.json").write_text(json.dumps(sorted(f.stem for f in pm_out.glob("20*.json"))), encoding="utf-8")
 
 
 def write_stock_pages(pages):

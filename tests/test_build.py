@@ -90,7 +90,7 @@ def test_build():
 
 
 if __name__ == "__main__":
-    import json, pathlib
+    import json, pathlib, sys
     from kcdt import __main__ as m
     d, pages = test_build()
     import datetime as dt
@@ -130,4 +130,28 @@ if __name__ == "__main__":
     m.keep_history(d, hist)
     days = json.loads((m.OUT / "h" / "index.json").read_text())
     assert days[0] == past and days[-1] == d["asof"], days
+    # A fake 盤前需知 so the page has something to show
+    from kcdt import premarket as pm
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    from test_premarket import bars
+    nowny = pd.Timestamp(now).tz_convert("America/New_York")
+    nowny = nowny.floor("5min")
+    fb = bars((nowny - pd.Timedelta(days=2)).strftime("%Y-%m-%d %H:%M"), nowny.strftime("%Y-%m-%d %H:%M"), 29000.0)
+    fut = {k: dict(n=n, sym=y, link=pm.QUOTE + y, **pm.futures_summary(fb * (1 if k == "NQ" else 0.26), nowny))
+           for k, y, n in pm.FUT}
+    day = lambda v, p: dict(v=v, d=d["asof"], chg=round(v - p, 2), pct=round((v / p - 1) * 100, 2))
+    mkt = [dict(k="VIX", n="VIX 恐慌指數", sym="^VIX", link=pm.QUOTE + "^VIX", eod=True, **day(17.2, 16.91)),
+           dict(k="US10Y", n="美國 10 年期國債息率", u="%", src="US Treasury", link="https://home.treasury.gov/", eod=True, **day(4.98, 5.05))]
+    world = [dict(k="HSI", n="恒生指數", sym="^HSI", link=pm.QUOTE + "^HSI", eod=True, **day(22958.65, 23094.83))]
+    st = d["stocks"]
+    brief = dict(d=nowny.strftime("%Y-%m-%d"), t=d["built"], asof=d["asof"], fut=fut, mkt=mkt, world=world, econ=d["econ"],
+                 earn_today=[dict(s=x["s"], n=x.get("n"), tm=tm, est=1.23, ndx=bool(x.get("ndx")), mcap=x.get("mcap"))
+                             for x, tm in zip([x for x in st if x.get("ndx")][:5], ["bmo", "amc", "amc", None, "bmo"])],
+                 earn_done=[dict(s=x["s"], n=x.get("n"), d=d["asof"], tm="amc", ndx=True, mcap=x.get("mcap"), est=1.96, rep=1.89, sur=-3.54)
+                            for x in [x for x in st if x.get("ndx")][5:7]],
+                 movers={x["s"]: dict(c=x["c"], v=round(x["c"] * (1 + (i % 9 - 4) / 100), 2), pct=float(i % 9 - 4),
+                                      t=d["built"], when="pre") for i, x in enumerate([x for x in st if x.get("ndx")])},
+                 score=[38, 50])
+    pm.publish(brief, hist)
+    assert json.loads((m.OUT / "pm" / "index.json").read_text()) == [brief["d"]]
     print("ok", d["asof"], d["hist"][-1]["score"], len(d["stocks"]), d["breadth"])
