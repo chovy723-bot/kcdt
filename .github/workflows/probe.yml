@@ -2,51 +2,43 @@ name: probe
 on:
   push:
     branches: [claude/probe]
-permissions:
-  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install playwright && python -m playwright install --with-deps chromium
-      - name: Screenshot the design reference
+      - run: pip install yfinance pandas requests
+      - name: probe premarket sources
         run: |
-          mkdir -p shots
-          cat > shot.py <<'PY'
-          import json
-          from playwright.sync_api import sync_playwright
-          URL = "https://kc-prop-firm-hub.syrupybuddy32.chatgpt.site/"
-          with sync_playwright() as p:
-              b = p.chromium.launch()
-              for tag, w, h in [("d", 1440, 900), ("m", 390, 844)]:
-                  pg = b.new_page(viewport={"width": w, "height": h})
-                  r = pg.goto(URL, wait_until="networkidle", timeout=60000)
-                  print(tag, "status", r.status if r else None, pg.title())
-                  pg.wait_for_timeout(4000)
-                  pg.screenshot(path=f"shots/{tag}-full.png", full_page=True)
-                  if tag == "d":
-                      open("shots/page.html", "w").write(pg.content())
-                      info = pg.evaluate("""() => {
-                        const cs = e => { const s = getComputedStyle(e); return {font: s.fontFamily, size: s.fontSize, weight: s.fontWeight, color: s.color, bg: s.backgroundColor, radius: s.borderRadius, border: s.border, shadow: s.boxShadow, pad: s.padding} };
-                        const pick = sel => [...document.querySelectorAll(sel)].slice(0, 3).map(e => ({sel, text: (e.innerText || '').slice(0, 60), ...cs(e)}));
-                        const root = getComputedStyle(document.documentElement), vars = {};
-                        for (const sh of document.styleSheets) { try { for (const r of sh.cssRules) if (r.selectorText === ':root') for (const k of r.style) vars[k] = r.style.getPropertyValue(k) } catch (e) {} }
-                        return {vars, body: cs(document.body), parts: [].concat(pick('h1'), pick('h2'), pick('h3'), pick('nav a'), pick('button'), pick('table'), pick('th'), pick('[class*=card]'), pick('[class*=badge]')),
-                                fonts: [...document.fonts].map(f => f.family + ' ' + f.weight).slice(0, 20), links: [...document.querySelectorAll('a')].slice(0, 40).map(a => a.innerText.trim().slice(0, 30) + ' -> ' + a.getAttribute('href'))};
-                      }""")
-                      open("shots/style.json", "w").write(json.dumps(info, ensure_ascii=False, indent=1))
-                      txt = pg.evaluate("() => document.body.innerText")
-                      open("shots/text.txt", "w").write(txt)
-              b.close()
+          cat > p.py <<'PY'
+          import yfinance as yf, requests, json, datetime as dt, pandas as pd
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"}
+          for t in ["NQ=F", "ES=F"]:
+              h = yf.download(t, period="5d", interval="5m", prepost=True, progress=False, auto_adjust=False)
+              print("==", t, h.shape, h.index[:2].tolist(), h.index[-3:].tolist())
+              print(h.tail(3).to_string()[:800])
+              d = yf.download(t, period="10d", interval="1d", progress=False, auto_adjust=False)
+              print(d.tail(3).to_string()[:600])
+          for t in ["^VIX", "DX-Y.NYB", "CL=F", "GC=F", "^N225", "^HSI", "^GDAXI", "^TNX", "2YY=F"]:
+              d = yf.download(t, period="5d", interval="1d", progress=False, auto_adjust=False)
+              print("==", t, d.index[-2:].tolist(), d["Close"].tail(2).values.ravel().tolist())
+          ny = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=4)
+          y = dt.date.today().year
+          u = f"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/{y}/all?type=daily_treasury_yield_curve&field_tdr_date_value={y}&page&_format=csv"
+          r = requests.get(u, headers={"User-Agent": UA["User-Agent"]}, timeout=30); print("== treasury", r.status_code); print(r.text[:400])
+          for d in ["2026-10-29", "2026-10-30"]:
+              r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={d}", headers=UA, timeout=30)
+              j = r.json(); rows = (j.get("data") or {}).get("rows") or []
+              print("== earnings", d, r.status_code, len(rows), list((j.get("data") or {}).keys()))
+              for x in rows[:3]: print(json.dumps(x)[:500])
+              big = [x for x in rows if x.get("symbol") in ("AMZN", "AAPL", "MSFT", "META", "GOOGL")]
+              for x in big: print("BIG", json.dumps(x)[:500])
+          for t in ["AMZN", "META"]:
+              r = requests.get(f"https://api.nasdaq.com/api/company/{t}/earnings-surprise", headers=UA, timeout=30)
+              print("== surprise", t, r.status_code, r.text[:700])
+          h = yf.download(["AAPL", "NVDA", "AMZN"], period="2d", interval="5m", prepost=True, progress=False, auto_adjust=False, group_by="ticker")
+          print("== prepost stocks", h.shape, h.index[-3:].tolist())
           PY
-          python shot.py
-      - name: Save to branch
-        run: |
-          git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan claude/probe-shots
-          git rm -rq --cached . ; git add shots ; git commit -qm "design reference shots"
-          git push -f origin claude/probe-shots
+          python p.py
