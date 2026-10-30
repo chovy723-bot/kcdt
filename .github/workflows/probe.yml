@@ -13,32 +13,11 @@ jobs:
       - name: probe premarket sources
         run: |
           cat > p.py <<'PY'
-          import yfinance as yf, requests, json, datetime as dt, pandas as pd
-          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"}
-          for t in ["NQ=F", "ES=F"]:
-              h = yf.download(t, period="5d", interval="5m", prepost=True, progress=False, auto_adjust=False)
-              print("==", t, h.shape, h.index[:2].tolist(), h.index[-3:].tolist())
-              print(h.tail(3).to_string()[:800])
-              d = yf.download(t, period="10d", interval="1d", progress=False, auto_adjust=False)
-              print(d.tail(3).to_string()[:600])
-          for t in ["^VIX", "DX-Y.NYB", "CL=F", "GC=F", "^N225", "^HSI", "^GDAXI", "^TNX", "2YY=F"]:
-              d = yf.download(t, period="5d", interval="1d", progress=False, auto_adjust=False)
-              print("==", t, d.index[-2:].tolist(), d["Close"].tail(2).values.ravel().tolist())
-          ny = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=4)
-          y = dt.date.today().year
-          u = f"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/{y}/all?type=daily_treasury_yield_curve&field_tdr_date_value={y}&page&_format=csv"
-          r = requests.get(u, headers={"User-Agent": UA["User-Agent"]}, timeout=30); print("== treasury", r.status_code); print(r.text[:400])
-          for d in ["2026-10-29", "2026-10-30"]:
-              r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={d}", headers=UA, timeout=30)
-              j = r.json(); rows = (j.get("data") or {}).get("rows") or []
-              print("== earnings", d, r.status_code, len(rows), list((j.get("data") or {}).keys()))
-              for x in rows[:3]: print(json.dumps(x)[:500])
-              big = [x for x in rows if x.get("symbol") in ("AMZN", "AAPL", "MSFT", "META", "GOOGL")]
-              for x in big: print("BIG", json.dumps(x)[:500])
-          for t in ["AMZN", "META"]:
-              r = requests.get(f"https://api.nasdaq.com/api/company/{t}/earnings-surprise", headers=UA, timeout=30)
-              print("== surprise", t, r.status_code, r.text[:700])
-          h = yf.download(["AAPL", "NVDA", "AMZN"], period="2d", interval="5m", prepost=True, progress=False, auto_adjust=False, group_by="ticker")
-          print("== prepost stocks", h.shape, h.index[-3:].tolist())
+          import yfinance as yf
+          for t in ["AMZN", "AAPL", "MSFT"]:
+              try:
+                  e = yf.Ticker(t).get_earnings_dates(limit=4)
+                  print("==", t); print(e.to_string()[:600])
+              except Exception as x: print(t, "ERR", x)
           PY
           python p.py
