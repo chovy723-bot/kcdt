@@ -2,34 +2,34 @@
 <meta name="description" content="每日美股趨勢數據：KCDT 趨勢風險分、市場寬度、Nasdaq-100 熱力圖、訊號、選股器、業績日曆同個股圖表。只供教育用途。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;600;700&family=Noto+Serif+HK:wght@900&display=swap">
 <style>
 /* Layout: one page with tabs (大市 / 機會 / 選股器 / 業績) plus a stock page at #s/TICKER. */
 :root{
-  /* one dark-green theme (KC, round 8) */
-  --bg:#0c1210; --side:#111a15; --panel:#151f18; --raise:#1b2a1e; --ink:#e5ebe6; --muted:#a5b4aa; --line:#2b3b2e; --soft:#1f2c22;
-  --accent:#b9ec8f; --link:#8fd88a; --sel:#273b2a;
-  --cool:#45c4a6; --warm:#e3b341; --hot:#f0675c;
-  --up:#4cc985; --down:#f0675c; --flat:#3d4c41; --tile-ink:#ffffff;
+  /* neutral charcoal (KC, round 9): blue = selected / primary; green, red, yellow only for status */
+  --bg:#111318; --side:#15181e; --panel:#1a1e26; --raise:#20252f; --ink:#e8ecf2; --muted:#a6afbd; --line:#2d333e; --soft:#232833;
+  --accent:#8ab4f8; --link:#8ab4f8; --sel:#1e2a40; --selline:#36507c; --ctl:#20252e; --ctlline:#363d4a;
+  --cool:#3fb67a; --warm:#e3b341; --hot:#ef6b61;
+  --up:#4cc985; --down:#ef6b61; --flat:#4a5160; --tile-ink:#ffffff;
   --f-logo:"Noto Serif HK","Songti TC",serif;  /* the KCDT logo only */
   --f-display:var(--f-body);
   --f-body:"Noto Sans HK","Noto Sans TC","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
-  --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --f-data:var(--f-body);  /* one font for text and numbers; numbers use tabular figures */
   color-scheme:dark;
 }
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;font-variant-numeric:tabular-nums}
 .wrap{max-width:1180px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1{font-family:var(--f-logo);font-weight:900;font-size:clamp(26px,4vw,34px);letter-spacing:.04em;line-height:1.1}
-h2{font-family:var(--f-body);font-weight:700;font-size:21px}
-h3{font-size:15px;font-weight:700}
+h2{font-family:var(--f-body);font-weight:600;font-size:21px}
+h3{font-size:16px;font-weight:600}
 p{margin:0}
 a{color:var(--link)}
 .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .small{font-size:13px}
-.eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:500}
-.kicker{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.eyebrow{font-size:13px;color:var(--muted);font-weight:500}
+.kicker{font-size:13px;color:var(--muted);font-weight:500}
 .up{color:var(--up)} .down{color:var(--down)}
 
 /* header, search, tabs */
@@ -39,6 +39,7 @@ a{color:var(--link)}
 .search input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 .search input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--muted)}
+.ftag{display:inline-block;font-size:13px;padding:1px 8px;margin:2px 4px 2px 0;border-radius:6px;background:var(--soft);color:var(--muted)}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
 .stale{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 10%,var(--panel));color:var(--ink);border-radius:10px;padding:10px 14px;font-size:14px}
 .stale b{color:var(--hot)}
@@ -47,7 +48,7 @@ nav.tabs a{flex:none;text-decoration:none;color:var(--muted);padding:8px 14px;bo
 nav.tabs a:hover{color:var(--ink)}
 nav.tabs a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
 nav.tabs>div{display:contents}
-nav.tabs .side-brand,nav.tabs .side-foot{display:none}
+nav.tabs .side-brand,nav.tabs .side-foot,nav.tabs .navgrp{display:none}
 @media (min-width:1100px){
   .wrap{max-width:1440px;grid-template-columns:200px minmax(0,1fr);column-gap:32px;padding-left:0}
   .wrap>*{grid-column:2}
@@ -56,9 +57,12 @@ nav.tabs .side-brand,nav.tabs .side-foot{display:none}
     background:var(--side);padding:20px 12px;margin-block:-16px -56px;overflow:visible;position:relative}
   nav.tabs>div{position:sticky;top:20px;display:flex;flex-direction:column;gap:2px}
   nav.tabs a{border:0;margin:0;padding:9px 14px;border-radius:9px;font-size:14px}
-  nav.tabs a[aria-current="page"]{background:var(--sel);color:var(--accent);box-shadow:inset 0 0 0 1px #3f5f3b}
+  nav.tabs a[aria-current="page"]{background:var(--sel);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
   nav.tabs .side-brand{display:block;padding:4px 6px 18px;text-decoration:none}
-  nav.tabs .side-brand h1{color:var(--accent);font-size:30px}
+  nav.tabs .side-brand h1{color:var(--ink);font-size:30px}
+  nav.tabs .navgrp{display:block;padding:14px 14px 4px;font-size:13px;color:var(--muted);font-weight:500}
+  nav.tabs .side-brand+.navgrp{padding-top:0}
+  nav.tabs .navabout{margin-top:14px;border-top:1px solid var(--line)!important;border-radius:0 0 9px 9px}
   nav.tabs .side-foot{display:block;margin-top:18px;padding:12px 6px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
   .top .brand{display:none}
 }
@@ -69,7 +73,7 @@ nav.tabs a.stk{font-family:var(--f-data)}
 section{display:grid;gap:12px}
 .sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
-.panel.lead{background:linear-gradient(135deg,var(--raise),var(--panel));border-color:#2f4632}
+.panel.lead{background:var(--raise);border-color:var(--ctlline)}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-family:var(--f-data);font-size:13px}
 .grid line{stroke:var(--soft)}
@@ -85,9 +89,9 @@ a.tk:hover{color:var(--accent);text-decoration:underline}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button.tog,label.tog{font:inherit;font-size:13px;padding:4px 12px;border-radius:8px;border:1px solid #35483a;background:#1d2a20;color:var(--ink);cursor:pointer}
-button.tog:hover,label.tog:hover{border-color:#4a6450}
-button.tog[aria-pressed="true"]{background:var(--sel);border-color:#4f7a45;color:var(--accent)}
+button.tog,label.tog{font:inherit;font-size:14px;padding:4px 12px;border-radius:8px;border:1px solid var(--ctlline);background:var(--ctl);color:var(--ink);cursor:pointer}
+button.tog:hover,label.tog:hover{border-color:#4b5363}
+button.tog[aria-pressed="true"]{background:var(--sel);border-color:var(--selline);color:var(--ink)}
 button.tog:focus-visible,th button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 th button[data-active="true"]{color:var(--ink);font-weight:700}
@@ -97,6 +101,11 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 
 /* market */
 .hero{display:grid;grid-template-columns:minmax(0,270px) minmax(0,290px) minmax(0,1fr);gap:14px;align-items:start}
+.sumcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+@media (max-width:900px){.sumcards{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sumcards .fng{grid-column:1/-1}}
+@media (max-width:560px){.sumcards{grid-template-columns:minmax(0,1fr)}}
+.ovhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.fng .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 @media (max-width:1100px){.hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.hero .wide{grid-column:1/-1}}
 @media (max-width:640px){.hero{grid-template-columns:minmax(0,1fr)}}
 .fng{display:grid;gap:8px;align-content:start}
@@ -104,10 +113,10 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .fng .vals b{display:block;font-family:var(--f-data);font-size:15px}
 .thermo{display:grid;gap:12px;align-content:start}
 .score{display:flex;align-items:baseline;gap:10px}
-.score b{font-family:var(--f-data);font-weight:600;font-size:48px;line-height:1}
+.score b{font-family:var(--f-data);font-weight:600;font-size:40px;line-height:1}
 .temp1{display:grid;gap:8px}
-.temp1+.temp1{border-top:1px solid var(--soft);padding-top:12px}
-.temp1 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.temp1 .row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.temp1 .row b{font-size:16px;font-weight:600}
 .panic{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 8%,var(--panel));border-radius:12px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
 .panic b{color:var(--hot);font-size:16px}
 .rebound{font-size:13px;display:grid;gap:4px 18px;grid-template-columns:auto minmax(0,1fr);align-items:start;padding:12px 16px}
@@ -143,17 +152,17 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
   table.dst td{display:block;border:0;padding:2px 4px}table.dst td[data-l]::before{content:attr(data-l)'：';color:var(--muted)}}
 /* 盤前需知 */
 #pm,#hx{display:grid;gap:22px}
-select{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px solid #35483a;background:#1d2a20;color:var(--ink)}
+select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px solid var(--ctlline);background:var(--ctl);color:var(--ink)}
 .pmhero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px}
 .pmhero h3{font-size:24px;margin:10px 0 8px}
 .pmhero ul{margin:0;padding-left:20px;display:grid;gap:4px}
 .pmstat{border-left:1px solid var(--line);padding-left:20px;display:grid;gap:14px;align-content:center}
-.pmstat b{display:block;font-family:var(--f-data);font-size:30px;color:var(--accent);font-weight:500;line-height:1.1}
-.chip{display:inline-block;font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid #3f5f3b;color:var(--muted)}
+.pmstat b{display:block;font-family:var(--f-data);font-size:30px;color:var(--ink);font-weight:600;line-height:1.1}
+.tagchip{display:inline-block;font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid var(--ctlline);color:var(--muted)}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .card{display:grid;gap:6px;align-content:start}
 .card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-.card .big{font-family:var(--f-data);font-size:28px;line-height:1.2;color:var(--ink)}
+.card .big{font-family:var(--f-data);font-weight:600;font-size:28px;line-height:1.2;color:var(--ink)}
 .card .sub{font-size:13px;color:var(--muted)}
 .card a{font-size:13px}
 @media (max-width:640px){.pmhero{grid-template-columns:1fr}.pmstat{border-left:0;padding-left:0;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);padding-top:12px}}
@@ -167,6 +176,7 @@ select{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px 
 .rebound details summary{cursor:pointer;color:var(--accent);font-size:13px}
 .rebound details p{margin-top:4px}
 .score span{font-family:var(--f-data);color:var(--muted);font-size:18px}
+.score span.small{font-size:13px;margin-left:auto}
 .zone{white-space:nowrap;flex-shrink:0;display:inline-block;font-weight:700;padding:2px 12px;border-radius:6px;color:var(--panel);font-size:15px}
 .scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--cool) 0 31.25%,var(--warm) 31.25% 62.5%,var(--hot) 62.5% 100%)}
 .scale i{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
@@ -212,19 +222,23 @@ table.ind{max-width:880px}
 /* screener */
 .cfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .cfbar select,.cfbar input,.cfgrid select,.cfgrid input{font:inherit;font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
-.scrsum{display:grid;gap:6px;margin-bottom:12px}
+.scrsum{display:grid;gap:8px}
+.adv>summary{cursor:pointer;list-style-position:inside}
+.adv[open]{display:grid;gap:10px}
+.adv[open]>summary{margin-bottom:4px}
 #scr-list .badge{margin:2px 4px 2px 0}
 .cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 16px}
 .cfgrid label{display:grid;grid-template-columns:7.5em 1fr;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .cfgrid label.set{color:var(--ink);font-weight:600}
-.cfgrid label.set select{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.cfgrid label.set select{border-color:var(--selline);background:var(--sel)}
 .cfgrid select{width:100%;min-width:0}
 .cfgrid .rng{grid-column:2;display:flex;gap:4px;align-items:center}
 .cfgrid .rng input{width:100%;min-width:0}
 .filters{display:grid;gap:10px}
+.filters.adv:not([open]){display:block}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
-.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--soft);box-shadow:inset 3px 0 0 var(--accent)}
+.chip{font:inherit;font-size:14px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--selline);color:var(--ink);background:var(--sel)}
 .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mvp{display:inline-block;width:11px;height:11px;transform:rotate(45deg);border-radius:2px;background:var(--soft);border:1px solid var(--line)}
 .mvp.m3{background:var(--up);border-color:var(--up)}
@@ -301,49 +315,60 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 
   <nav class="tabs" aria-label="頁面"><div>
     <a class="side-brand" href="#market"><h1>KCDT</h1><span class="eyebrow">美股趨勢溫度計</span></a>
+    <span class="navgrp">睇市</span>
     <a href="#market" data-v="market">大市</a>
     <a href="#pm" data-v="pm">盤前需知</a>
-    <a href="#ideas" data-v="ideas">機會</a>
-    <a href="#watch" data-v="watch">自選</a>
-    <a href="#screener" data-v="screener">選股器</a>
-    <a href="#earnings" data-v="earnings">業績日曆</a>
     <a href="#news" data-v="news">經濟及新聞</a>
+    <a href="#earnings" data-v="earnings">業績日曆</a>
+    <span class="navgrp">選股</span>
+    <a href="#ideas" data-v="ideas">機會</a>
+    <a href="#screener" data-v="screener">選股器</a>
+    <a href="#watch" data-v="watch">自選</a>
+    <span class="navgrp">復盤</span>
     <a href="#journal" data-v="journal">交易日誌</a>
     <a href="#history" data-v="history">歷史</a>
-    <a href="#about" data-v="about">說明及數據狀態</a>
+    <a href="#about" data-v="about" class="navabout">說明及數據狀態</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
     <p class="side-foot">只供數據參考及教育用途，唔係投資建議。</p>
   </div></nav>
 
   <!-- ===== 大市 ===== -->
   <main class="view" id="v-market">
+    <section class="ovhead" aria-labelledby="h-ov">
+      <h2 id="h-ov">大市概覽</h2>
+      <p class="muted small" id="ov-t"></p>
+    </section>
     <section class="panel lead brief" aria-labelledby="h-brief">
       <div class="sechead"><h2 id="h-brief">今日三項重點</h2><span class="muted small" id="brief-d"></span></div>
       <ul id="brief"></ul>
       <p class="small" id="brief-wl" hidden></p>
     </section>
     <section aria-labelledby="h-temp">
-      <div class="sechead"><h2 id="h-temp">KCDT 趨勢風險分</h2><span class="muted small"><b>低分 = 模型顯示低風險，高分 = 風險較高</b>（同 CNN 恐懼與貪婪指數方向唔同）· 8 條規則：正常 0、警戒半格、高風險一格，換算成 0–100。<b>係規則分數，唔係跌市機率</b>。</span></div>
+      <div class="sechead"><h2 id="h-temp">大市、科技股同市場情緒</h2></div>
+      <p class="muted small" style="margin-top:-6px">KCDT 趨勢風險分：低分 = 低風險，高分 = 風險較高（同 CNN 恐懼與貪婪指數方向相反）。8 條規則，正常 0、警戒半格、高風險一格，換算成 0–100。<b>係規則分數，唔係跌市機率。</b></p>
       <div class="panic" id="panic" role="status" hidden></div>
-      <div class="hero">
-        <div class="panel thermo" id="thermo"></div>
+      <div class="sumcards">
+        <div id="thermo" style="display:contents"></div>
         <div class="panel fng" id="fng" aria-labelledby="h-fng">
-          <span class="eyebrow" id="h-fng">CNN 恐懼與貪婪指數</span>
+          <div class="row"><b id="h-fng">市場情緒</b><span class="muted small">CNN 恐懼與貪婪指數</span></div>
           <svg class="chart" id="fnggauge" viewBox="0 0 240 126" role="img"></svg>
           <div class="vals" id="fngvals"></div>
           <svg class="chart" id="fngline" viewBox="0 0 260 54" role="img" aria-label="恐懼與貪婪指數一年走勢"></svg>
           <p class="muted small" id="fngnote"></p>
         </div>
-        <div class="panel wide" style="display:grid;gap:8px;align-content:start">
-          <div class="sechead"><h3>趨勢風險分：過去 60 個交易日</h3><div class="controls tsel"></div></div>
-          <div class="legend"><span><i style="background:var(--cool)"></i>0–30 低風險</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 高風險</span></div>
-          <svg class="chart" id="scorechart" viewBox="0 0 640 200" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
-        </div>
       </div>
       <div class="panel rebound" id="rebound" hidden></div>
     </section>
+    <section aria-labelledby="h-hist">
+      <div class="sechead"><h2 id="h-hist">趨勢風險分：過去 60 個交易日</h2><div class="controls tsel"></div></div>
+      <div class="panel" style="display:grid;gap:8px">
+        <div class="legend"><span><i style="background:var(--cool)"></i>0–30 低風險</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 高風險</span></div>
+        <svg class="chart" id="scorechart" viewBox="0 0 960 200" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
+      </div>
+    </section>
 
-    <section aria-label="指數">
+    <section aria-labelledby="h-idx">
+      <div class="sechead"><h2 id="h-idx">指數</h2><span class="muted small">過去 60 個交易日</span></div>
       <div class="minis" id="minis"></div>
     </section>
 
@@ -421,31 +446,32 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-scr">
       <div class="sechead"><h2 id="h-scr">選股器</h2><span class="muted small" id="scrcount"></span></div>
       <div class="panel scrsum" role="status">
-        <div><b id="scr-n"></b> <span class="small" id="scr-list"></span></div>
-        <div class="cfbar"><label class="small"><input type="checkbox" id="incl-na"> 包括資料不足股票</label>
-          <button class="tog" id="all-clear">清除全部條件</button></div>
-        <p class="muted small" id="scr-na"></p>
-      </div>
-      <div class="panel filters">
-        <div class="sechead"><h3>自訂條件 <span class="muted small" id="cfn"></span></h3>
-          <div class="controls" id="cftabs"></div></div>
-        <div class="cfgrid" id="cfgrid"></div>
+        <div><b id="scr-n"></b> <span id="scr-list"></span></div>
         <div class="cfbar">
           <select id="pre" aria-label="我的預設"></select>
           <input id="pre-name" placeholder="改個名，例如：強勢科技" aria-label="預設名稱">
           <button class="tog" id="pre-save">儲存目前條件</button>
           <button class="tog" id="pre-del" hidden>刪除呢個預設</button>
-          <button class="tog" id="cf-clear">只清除自訂條件</button>
           <span class="muted small" id="pre-msg"></span>
-        </div>
+          <span style="flex:1"></span>
+          <label class="small"><input type="checkbox" id="incl-na"> 包括資料不足股票</label>
+          <button class="tog" id="all-clear">清除全部條件</button></div>
+        <p class="muted small" id="scr-na"></p>
       </div>
       <div class="panel filters">
-        <div class="sechead"><h3>KC 嘅條件 <span class="muted small">（撳一下可以開關）</span></h3><button class="tog" id="f-reset">還原預設</button></div>
+        <div class="sechead"><h3>KC 嘅條件 <span class="muted small">撳一下可以開關</span></h3><button class="tog" id="f-reset">還原預設</button></div>
         <div class="chips" id="chipsA"></div>
-        <div class="sechead"><h3>加強條件 <span class="muted small">（預設關）</span></h3>
+      </div>
+      <details class="panel filters adv" id="adv">
+        <summary><b>進階條件</b> <span class="muted small" id="adv-n"></span></summary>
+        <div class="sechead"><h3>加強條件 <span class="muted small">預設關</span></h3>
           <label class="small muted">3 季增長門檻 <select id="g3x"><option>25</option><option selected>50</option><option>100</option></select> %</label></div>
         <div class="chips" id="chipsB"></div>
-      </div>
+        <div class="sechead"><h3>自訂條件 <span class="muted small" id="cfn"></span></h3>
+          <div class="controls" id="cftabs"></div></div>
+        <div class="cfgrid" id="cfgrid"></div>
+        <div class="cfbar"><button class="tog" id="cf-clear">只清除自訂條件</button></div>
+      </details>
       <div class="panel" style="display:grid;gap:8px">
         <div class="cfbar"><span class="muted small" id="cmp-n">剔代號旁邊個格（2 至 4 隻）可以並排比較。</span>
           <button class="tog" id="cmp-clear" hidden>清除比較</button>
@@ -755,22 +781,23 @@ function lineChart(svg, series, {min,max,ticks,fmt,labels}){
 DRAW.market = () => {
   const T = {spx:{key:'spx',n:'大市風險分',sub:'S&P 500',hist:D.hist,rules:D.rules}};
   if(D.tech) T.ndx={key:'ndx',n:'科技股風險分',sub:'Nasdaq-100',hist:D.tech.hist,rules:D.tech.rules};
-  $('thermo').innerHTML = Object.values(T).map(t=>{const H=t.hist, last=H[H.length-1], prev=H[H.length-2], [zn,zc]=zoneOf(last.score);
+  $('thermo').innerHTML = Object.values(T).map(t=>{const H=t.hist, last=H[H.length-1], prev=H[H.length-2], [zn]=zoneOf(last.score), d=P100(last.score)-P100(prev.score);
     const reds=t.rules.filter(r=>last.p[r.k]===2).length, yel=t.rules.filter(r=>last.p[r.k]===1).length;
-    return `<div class="temp1"><div class="row"><span class="eyebrow">${t.n} · ${t.sub}</span><span class="zone" style="background:var(${zc})">${zn}</span></div>
-      <div class="score"><b class="num">${P100(last.score)}</b><span>/ 100</span></div>
+    return `<div class="panel temp1"><div class="row"><div><b>${t.n}</b><div class="muted small">${t.sub}</div></div><span class="pill p${last.score<=4?0:last.score<=9?1:2}">${zn}</span></div>
+      <div class="score"><b class="num">${P100(last.score)}</b><span>/ 100</span><span class="small">${d===0?'同前一日一樣':`較前一日${d>0?'升':'跌'} ${Math.abs(d)}`}</span></div>
       <div class="scale"><i style="left:${last.score/16*100}%"></i></div>
-      <p class="muted small">前一日 ${P100(prev.score)} 分 · ${t.rules.length-reds-yel} 項正常、${yel} 項警戒、${reds} 項高風險</p></div>`}).join('') +
-    '<div class="scalelab"><span>0 低風險</span><span>31 警戒</span><span>63 高風險</span><span>100</span></div><p class="muted small">規則分數，唔係跌市機率。</p>';
+      <div class="scalelab"><span>0</span><span>31 警戒</span><span>63 高風險</span><span>100</span></div>
+      <p class="muted small">${t.rules.length-reds-yel} 項正常 · ${yel} 項警戒 · ${reds} 項高風險</p></div>`}).join('');
   if(D.rebound){$('rebound').hidden=false;$('rebound').innerHTML=rebound(D.rebound)}
   brief(T);
+  $('ov-t').textContent=`價格截至 ${D.asof} 美股收市 · 網站更新：${hkFmt(D.built)}（香港時間）`;
   if(D.panic && D.panic.on){$('panic').hidden=false;$('panic').innerHTML=`<b>恐慌區（第 ${D.panic.day} 日）</b><span>VIX 同波幅都到高風險水平。2004 年至今共 522 日，之後 3 個月 QQQ 平均 +9%，79% 時間上升；但恐慌頭 3 日之後仍有 36% 機會再跌 10%。只供參考，唔係買賣建議。</span>`}
   let tsel='spx';
   const tbtn=()=>document.querySelectorAll('.tsel').forEach(box=>{box.innerHTML=Object.entries(T).map(([k,t])=>`<button class="tog" data-t="${k}" aria-pressed="${k===tsel}">${t.n}</button>`).join('');
     box.querySelectorAll('button').forEach(b=>b.onclick=()=>{tsel=b.dataset.t;tbtn();drawTemp()})});
   const drawTemp=()=>{
     const H=T[tsel].hist, rules=T[tsel].rules, last=H[H.length-1];
-    const svg=$('scorechart'); svg.innerHTML=''; const W=640,Hh=200,L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
+    const svg=$('scorechart'); svg.innerHTML=''; const W=innerWidth<700?480:960,Hh=200; svg.setAttribute('viewBox',`0 0 ${W} ${Hh}`); const L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
     const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
     [0,5,10,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=P100(v)});
@@ -1057,8 +1084,11 @@ const plain=h=>h.replace(/<span id="g3lab">\d+<\/span>/,G3X).replace(/<[^>]+>/g,
 function scrSummary(chipOn, cfOn){
   const n=chipOn.length+cfOn.length;
   $('scr-n').textContent = n ? `已啟用 ${n} 項條件：` : '未有啟用任何條件，顯示晒全部股票';
-  $('scr-list').innerHTML = chipOn.map(x=>`<span class="badge">${plain(x[1])}</span>`).join('')
-    + cfOn.map(([k,v])=>{const x=CFK[k], o=cfOpts(x); return `<span class="badge">${x[2]}：${x[3]?rlab(v):o[+v][0]}</span>`}).join('');
+  $('scr-list').innerHTML = chipOn.map(x=>`<span class="ftag">${plain(x[1])}</span>`).join('')
+    + cfOn.map(([k,v])=>{const x=CFK[k], o=cfOpts(x); return `<span class="ftag">${x[2]}：${x[3]?rlab(v):o[+v][0]}</span>`}).join('');
+  const adv=chipOn.filter(x=>FB.includes(x)).length+cfOn.length;
+  $('adv-n').textContent = adv ? `已啟用 ${adv} 項` : '加強條件同自訂條件，預設收起';
+  if(adv && !scrSummary.opened){ $('adv').open=true; scrSummary.opened=true }
   const miss=S.length-D.nfund;
   $('scr-na').textContent = `${miss.toLocaleString('en-US')} 隻股票未有基本面數據（市值、營收、EPS 等，表入面顯示「—」）。${INCL_NA?'而家會保留佢哋：缺少嘅數據當係符合條件。':'預設會被基本面條件篩走；剔「包括資料不足股票」就會保留。'}基本面數據每日補一部分，價格同技術數據每日收市後更新。`;
 }
@@ -1387,7 +1417,7 @@ function pmLines(b){
   if(b.score&&b.score.length) L.push(`<b>風險分</b>（${b.asof} 收市）：大市 ${b.score[0]}${b.score[1]!=null?`、科技 ${b.score[1]}`:''}／100，規則分數，唔係跌市機率。`);
   return L;
 }
-const pmCard = (title, tag, big, sub, link, linkTxt) => `<div class="panel card"><div class="hd"><span>${title}</span>${tag?`<span class="chip">${tag}</span>`:''}</div><div class="big">${big}</div><div class="sub">${sub}</div>${link?`<a href="${link}" target="_blank" rel="noopener">${linkTxt} ↗</a>`:''}</div>`;
+const pmCard = (title, tag, big, sub, link, linkTxt) => `<div class="panel card"><div class="hd"><span>${title}</span>${tag?`<span class="tagchip">${tag}</span>`:''}</div><div class="big">${big}</div><div class="sub">${sub}</div>${link?`<a href="${link}" target="_blank" rel="noopener">${linkTxt} ↗</a>`:''}</div>`;
 const pmDaily = x => pmCard(x.n, '日終', `${f(x.v)}${x.u||''} ${x.pct!=null?`<span class="small ${cls(x.pct)}">${x.u==='%'?sgn(x.chg,2)+' 個百分點':sgn(x.pct,2)+'%'}</span>`:''}`, `${x.d} 收市 · ${x.src||'Yahoo'} 日線`, x.link, x.src?`${x.src} 每日息率`:`Yahoo ${x.sym}`);
 const pmEtf = x => pmCard(`${x.k} ${x.n}`, x.when==='pre'?'盤前':'盤後', `${f(x.v)} <span class="small ${cls(x.pct)}">${sgn(x.pct,2)}%</span>`, `較昨日收市 ${f(x.c)} · ${hkFmt(x.t)} 香港時間<br>盤前成交少，價格只供參考 · Yahoo`, x.link, `Yahoo ${x.k}`);
 let pmScope='ndx';
@@ -1422,7 +1452,7 @@ async function pmShow(d){
   if(sel.value!==d) return;
   const L=pmLines(b), got=[...(b.idx||[]),...(b.etf||[]),...(b.mkt||[]),...(b.world||[])].filter(x=>x&&x.v!=null).length;
   const draw=()=>{
-    $('pm').innerHTML = `<div class="panel lead pmhero"><div><span class="chip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
+    $('pm').innerHTML = `<div class="panel lead pmhero"><div><span class="tagchip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
       <p class="muted small" style="margin-top:8px">資料截至 ${hkFmt(b.t)}（香港時間）· 由下面數據自動整理，唔係建議</p></div>
       <div class="pmstat"><div><b>${(b.econ||[]).filter(pmKey).length}</b><span class="muted small">重要經濟數據</span></div><div><b>${got}/${4+(b.mkt||[]).length+(b.world||[]).length}</b><span class="muted small">已取得市場項目</span></div></div></div>
       <section><p class="kicker">Indices</p><h2>指數琴日收市同 ETF 盤前</h2><div class="cards">${(b.idx||[]).map(pmDaily).join('')}${(b.etf||[]).map(pmEtf).join('')}</div></section>
