@@ -12,6 +12,7 @@ permissions:
   contents: write  # keep the brief on the history branch
   pages: write
   id-token: write
+  issues: write    # open an issue (emails KC) when the brief fails
 
 concurrency:
   group: pages
@@ -84,3 +85,18 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  report:
+    needs: [brief, deploy]
+    if: always() && github.ref == 'refs/heads/main' && (needs.brief.result == 'failure' || needs.deploy.result == 'failure')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      NOTIFY: chovy723-bot  # KC's GitHub account: assigned + mentioned, so GitHub emails KC
+    steps:
+      - run: |
+          gh label create update-failed --color d73a4a --force
+          gh issue create --label update-failed --title "KCDT 盤前需知 failed $(date -u +%F)" --assignee "$NOTIFY" \
+            --body "@$NOTIFY 今日盤前需知整理失敗，網站仍然顯示上一份。Log: $RUN_URL"
