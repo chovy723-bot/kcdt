@@ -1417,6 +1417,7 @@ function initPre(){
     on.clear(); p.on.forEach(k=>on.add(k)); CFS={...p.cf}; G3X=p.g3x||50; $('g3x').value=String(G3X); $('pre-name').value=n;
     drawCF(); drawChips(); renderStocks()};
   $('pre-save').onclick=async()=>{const n=$('pre-name').value.trim(); if(!n){$('pre-name').focus();preMsg('先改個名');return}
+    if(!PRE.some(x=>x.id===n) && PRE.length>=PRE_MAX){preMsg(`最多儲 ${PRE_MAX} 個預設，請先刪走啲唔用嘅`);return}
     try{await DB.put('presets',{id:n,on:[...on],cf:{...CFS},g3x:G3X,upd:Date.now()})}catch(e){preMsg('儲唔到，遲啲再試');return}
     await drawPre(n); preMsg(DB===LocalDB?'已儲存（暫時儲喺呢部機）':'已儲存到你個帳戶')};
   $('pre-del').onclick=async()=>{const n=$('pre').value; await DB.del('presets',n); $('pre-name').value=''; await drawPre(''); preMsg('已刪除')};
@@ -1451,7 +1452,8 @@ async function wlPut(r){ r={...r, upd:Date.now()}; try{ await DB.put('watch',r);
   catch(e){ wlMsg(DB===LocalDB?'自選清單儲唔到：瀏覽器空間滿咗':'自選清單儲唔到雲端，遲啲再試'); return false } }
 async function wlToggle(t){
   if(WL.has(t)){ try{ await DB.del('watch',t); WL.delete(t) }catch(e){ wlMsg('刪唔到，遲啲再試') } }
-  else if(await wlPut({id:t, st:'watch', note:'', added:ymd(nyNow())})) wlMsg(`${t} 已加入自選清單（觀察中）`);
+  else if(WL.size>=WL_MAX) wlMsg(`自選清單最多 ${WL_MAX} 隻，請先移除啲唔再留意嘅`);
+  else if(await wlPut({id:t, st:'watch', note:'', added:ymd(nyNow())})) wlMsg(`${t} 已加入自選清單（觀察中，${WL.size} / ${WL_MAX} 隻）`);
   wlStars(); if(drawn.watch) drawWatch(); if(drawn.ideas && chgScope==='wl') drawChanges();
 }
 document.addEventListener('click', e=>{ const b=e.target.closest('.star[data-w],#s-wl'); if(!b) return; e.preventDefault(); e.stopPropagation(); wlToggle(b.dataset.w) });
@@ -1863,7 +1865,7 @@ function jLoad(id){ const t = TR.find(x=>x.id===id), F=$('jf'); if(!t) return; j
 function jReset(){ jEdit=null; jShots=[]; jFills=[]; $('jf').reset(); $('jf').elements.open.value=ymd(nyNow()); jShotsDraw(); jFillsDraw(); jMkt();
   $('j-tz').value=Store.get('jtz','HK'); $('h-jf').textContent='新增交易'; $('j-del').hidden=true; $('j-save').textContent='儲存交易' }
 // Per-person cap so the shared free Firebase quota (1 GB stored, 50,000 reads a day) lasts; opening the journal reads every trade once
-const J_MAX=1000;
+const J_MAX=1000, PRE_MAX=50, WL_MAX=200;  // per person; presets and watchlist are tiny but the watchlist is read on every visit
 function jCount(){ const e=$('j-count'), n=TR.length; e.hidden=false; e.textContent=`已用 ${n.toLocaleString('en-US')} / ${J_MAX.toLocaleString('en-US')} 單`;
   e.style.borderColor=n>=J_MAX*0.9?'var(--hot)':''; e.title=n>=J_MAX*0.9?'就快到上限：記得下載完整備份，再刪走舊紀錄':'' }
 async function jReload(){ TR = await DB.all('trades'); $('j-where').textContent = DB.where; jCount(); jRender() }
@@ -1907,6 +1909,9 @@ DRAW.journal = () => {
       if(!bak||bak.app!=='KCDT'||!Array.isArray(bak.trades)){ jMsg('呢個唔係 KCDT 備份檔'); return }
       const had=new Set(TR.map(x=>x.id)); let n=0, same=0;
       const add=new Set(bak.trades.filter(t=>t&&t.id&&!had.has(t.id)).map(t=>t.id)).size;
+      const P0=await DB.all('presets').catch(()=>[]), pAdd=new Set((bak.presets||[]).filter(x=>x&&x.id&&!P0.some(y=>y.id===x.id)).map(x=>x.id)).size,
+            wAdd=new Set((bak.watch||[]).filter(x=>x&&x.id&&!WL.has(x.id)).map(x=>x.id)).size;
+      if(P0.length+pAdd>PRE_MAX||WL.size+wAdd>WL_MAX){ jMsg(`匯入之後選股預設會有 ${P0.length+pAdd} 個（上限 ${PRE_MAX}）、自選股 ${WL.size+wAdd} 隻（上限 ${WL_MAX}），超過上限。請先刪走啲舊嘅。`); return }
       if(had.size+add>J_MAX){ jMsg(`匯入之後會有 ${(had.size+add).toLocaleString('en-US')} 單，超過上限 ${J_MAX.toLocaleString('en-US')} 單。請先刪走啲舊紀錄。`); return }
       try{ for(const t of bak.trades) if(t&&t.id&&t.sym&&t.open){ if(had.has(t.id)) same++; await DB.put('trades',t); n++ }
         for(const p of bak.presets||[]) if(p&&p.id) await DB.put('presets',p);
