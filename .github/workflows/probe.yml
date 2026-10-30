@@ -2,22 +2,52 @@ name: probe
 on:
   push:
     branches: [claude/probe]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/kcdt-round7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install yfinance pandas requests
-      - name: probe premarket sources
+      - run: pip install -r requirements.txt playwright && python -m playwright install --with-deps chromium
+      - uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: fundamentals-latest
+          restore-keys: fundamentals-
+      - run: mkdir -p hist && python -m kcdt
+        env:
+          KCDT_HISTORY: hist
+      - run: python -m kcdt.premarket
+        env:
+          KCDT_HISTORY: hist
+      - name: Screenshot the brief
         run: |
-          cat > p.py <<'PY'
-          import yfinance as yf
-          for t in ["AMZN", "AAPL", "MSFT"]:
-              try:
-                  e = yf.Ticker(t).get_earnings_dates(limit=4)
-                  print("==", t); print(e.to_string()[:600])
-              except Exception as x: print(t, "ERR", x)
+          mkdir -p shots && cp site/pm/*.json shots/
+          (cd site && python -m http.server 8765 >/dev/null 2>&1 &) ; sleep 2
+          cat > shot.py <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for tag, w, h in [("d", 1280, 900), ("m", 390, 844)]:
+                  pg = b.new_page(viewport={"width": w, "height": h})
+                  errs = []
+                  pg.on("pageerror", lambda e: errs.append(str(e)))
+                  for v in ["pm", "market"]:
+                      pg.goto(f"http://localhost:8765/#{v}"); pg.wait_for_timeout(2500)
+                      pg.screenshot(path=f"shots/{tag}-{v}.png", full_page=True)
+                  print(tag, "errors", errs)
+              b.close()
           PY
-          python p.py
+          python shot.py
+      - name: Save to branch
+        run: |
+          git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan claude/probe-shots
+          git rm -rq --cached . ; git add shots ; git commit -qm "premarket shots"
+          git push -f origin claude/probe-shots
