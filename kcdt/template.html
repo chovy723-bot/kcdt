@@ -60,7 +60,12 @@ nav.tabs .side-brand,nav.tabs .side-foot,nav.tabs .navgrp{display:none}
   nav.tabs a[aria-current="page"]{background:var(--sel);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
   nav.tabs .side-brand{display:block;padding:4px 6px 18px;text-decoration:none}
   nav.tabs .side-brand h1{color:var(--ink);font-size:30px}
-  nav.tabs .navgrp{display:block;margin:10px 6px 2px;padding:12px 8px 2px;border-top:1px solid var(--line);font-size:12px;color:#7d8696;font-weight:500;cursor:default;user-select:none}
+  nav.tabs .navgrp{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 12px);margin:10px 6px 2px;padding:12px 8px 4px;border:0;border-top:1px solid var(--line);background:none;font:inherit;font-size:13px;color:var(--muted);font-weight:500;cursor:pointer;text-align:left}
+  nav.tabs .navgrp:hover{color:var(--ink)}
+  nav.tabs .navgrp i{font-style:normal;font-size:12px;width:12px;text-align:center}
+  nav.tabs .navgrp i::before{content:"▾"}
+  nav.tabs .navgrp[aria-expanded="false"] i::before{content:"▸"}
+  nav.tabs a.gx{display:none}
   nav.tabs .side-brand+.navgrp{margin-top:0;border-top:0;padding-top:0}
   nav.tabs .navabout{margin-top:14px;border-top:1px solid var(--line)!important;border-radius:0 0 9px 9px}
   nav.tabs .side-foot{display:block;margin-top:18px;padding:12px 6px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
@@ -325,18 +330,18 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 
   <nav class="tabs" aria-label="頁面"><div>
     <a class="side-brand" href="#market"><h1>KCDT</h1><span class="eyebrow">美股趨勢溫度計</span></a>
-    <span class="navgrp">睇市</span>
-    <a href="#market" data-v="market">大市</a>
-    <a href="#pm" data-v="pm">盤前需知</a>
-    <a href="#news" data-v="news">經濟及新聞</a>
-    <a href="#earnings" data-v="earnings">業績日曆</a>
-    <span class="navgrp">選股</span>
-    <a href="#ideas" data-v="ideas">機會</a>
-    <a href="#screener" data-v="screener">選股器</a>
-    <a href="#watch" data-v="watch">自選</a>
-    <span class="navgrp">復盤</span>
-    <a href="#journal" data-v="journal">交易日誌</a>
-    <a href="#history" data-v="history">歷史</a>
+    <button type="button" class="navgrp" data-g="look" aria-expanded="true"><span>睇市</span><i aria-hidden="true"></i></button>
+    <a href="#market" data-v="market" data-g="look">大市</a>
+    <a href="#pm" data-v="pm" data-g="look">盤前需知</a>
+    <a href="#news" data-v="news" data-g="look">經濟及新聞</a>
+    <a href="#earnings" data-v="earnings" data-g="look">業績日曆</a>
+    <button type="button" class="navgrp" data-g="pick" aria-expanded="true"><span>選股</span><i aria-hidden="true"></i></button>
+    <a href="#ideas" data-v="ideas" data-g="pick">機會</a>
+    <a href="#screener" data-v="screener" data-g="pick">選股器</a>
+    <a href="#watch" data-v="watch" data-g="pick">自選</a>
+    <button type="button" class="navgrp" data-g="review" aria-expanded="true"><span>復盤</span><i aria-hidden="true"></i></button>
+    <a href="#journal" data-v="journal" data-g="review">交易日誌</a>
+    <a href="#history" data-v="history" data-g="review">歷史</a>
     <a href="#about" data-v="about" class="navabout">說明及數據狀態</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
     <p class="side-foot">只供數據參考及教育用途，唔係投資建議。</p>
@@ -760,10 +765,29 @@ function route(){
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
   document.querySelectorAll('nav.tabs a').forEach(a=>{ if(a.dataset.v===v) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current') });
   if(v==='stock'){ const t=h.slice(2); $('stocktab').hidden=false; $('stocktab').textContent=t; $('stocktab').href='#s/'+t; showStock(t) }
+  navGroups();
   if(!drawn[v] && DRAW[v]){ DRAW[v](); drawn[v]=true }
   window.scrollTo(0,0);
 }
 const DRAW = {};
+
+// ---------- sidebar groups (desktop): click a heading to collapse / expand; the current page's group stays open ----------
+const NAVKEY='kcdt-nav-closed';
+let navClosed=[]; try{navClosed=JSON.parse(localStorage.getItem(NAVKEY)||'[]')}catch(e){}
+function navGroups(){
+  const cur=(document.querySelector('nav.tabs a[aria-current="page"]')||{}).dataset?.g;
+  document.querySelectorAll('nav.tabs .navgrp').forEach(b=>{
+    const g=b.dataset.g, open=!navClosed.includes(g)||g===cur;
+    b.setAttribute('aria-expanded',open);
+    document.querySelectorAll(`nav.tabs a[data-g="${g}"]`).forEach(a=>a.classList.toggle('gx',!open));
+  });
+}
+document.querySelectorAll('nav.tabs .navgrp').forEach(b=>b.onclick=()=>{
+  const g=b.dataset.g, open=b.getAttribute('aria-expanded')==='true';
+  navClosed=navClosed.filter(x=>x!==g); if(open) navClosed.push(g);
+  try{localStorage.setItem(NAVKEY,JSON.stringify(navClosed))}catch(e){}
+  if(open){ document.querySelectorAll(`nav.tabs a[data-g="${g}"]`).forEach(a=>a.classList.add('gx')); b.setAttribute('aria-expanded','false') } else navGroups();
+});
 
 // ---------- shared charts ----------
 function candles(svg, m, {W, H, L=4, R=46, T=6, B=16}){
