@@ -69,7 +69,7 @@ nav.tabs a.stk{font-family:var(--f-data)}
 section{display:grid;gap:12px}
 .sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
-.panel.hero{background:linear-gradient(135deg,var(--raise),var(--panel));border-color:#2f4632}
+.panel.lead{background:linear-gradient(135deg,var(--raise),var(--panel));border-color:#2f4632}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-family:var(--f-data);font-size:13px}
 .grid line{stroke:var(--soft)}
@@ -317,7 +317,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 
   <!-- ===== 大市 ===== -->
   <main class="view" id="v-market">
-    <section class="panel hero brief" aria-labelledby="h-brief">
+    <section class="panel lead brief" aria-labelledby="h-brief">
       <div class="sechead"><h2 id="h-brief">今日三項重點</h2><span class="muted small" id="brief-d"></span></div>
       <ul id="brief"></ul>
       <p class="small" id="brief-wl" hidden></p>
@@ -1428,7 +1428,7 @@ async function pmShow(d){
   if(sel.value!==d) return;
   const F=b.fut||{}, L=pmLines(b), got=[F.NQ,F.ES,...(b.mkt||[]),...(b.world||[])].filter(x=>x&&x.v!=null).length;
   const draw=()=>{
-    $('pm').innerHTML = `<div class="panel hero pmhero"><div><span class="chip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
+    $('pm').innerHTML = `<div class="panel lead pmhero"><div><span class="chip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
       <p class="muted small" style="margin-top:8px">資料截至 ${hkFmt(b.t)}（香港時間）· 由下面數據自動整理，唔係建議</p></div>
       <div class="pmstat"><div><b>${(b.econ||[]).filter(pmKey).length}</b><span class="muted small">重要經濟數據</span></div><div><b>${got}/${2+(b.mkt||[]).length+(b.world||[]).length}</b><span class="muted small">已取得市場項目</span></div></div></div>
       <section><p class="kicker">Futures</p><h2>期貨</h2><div class="cards">${pmFut('NQ',F.NQ)}${pmFut('ES',F.ES)}</div></section>
