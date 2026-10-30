@@ -18,7 +18,8 @@ from .__main__ import OUT, ROOT, now_utc, pass_kc, render
 from .fetch import NASDAQ_UA, EARN_TIME, economic_calendar
 
 NY = "America/New_York"
-FUT = [("NQ", "NQ=F", "Nasdaq-100 期貨"), ("ES", "ES=F", "S&P 500 期貨")]
+IDX = [("NDX", "^NDX", "Nasdaq-100 指數"), ("SPX", "^GSPC", "標普 500 指數")]
+ETF = [("QQQ", "Nasdaq-100 ETF"), ("SPY", "標普 500 ETF")]
 MKT = [("VIX", "^VIX", "VIX 恐慌指數"), ("DXY", "DX-Y.NYB", "美元指數"), ("CL", "CL=F", "紐約原油期貨"), ("GC", "GC=F", "黃金期貨")]
 WORLD = [("N225", "^N225", "日經 225"), ("HSI", "^HSI", "恒生指數"), ("DAX", "^GDAXI", "德國 DAX")]
 QUOTE = "https://finance.yahoo.com/quote/"
@@ -32,40 +33,6 @@ def _r(x, d=2):
 
 def _iso(ts):
     return pd.Timestamp(ts).tz_convert("UTC").strftime("%Y-%m-%dT%H:%MZ")
-
-
-def session_start(now):
-    """Start of the current CME Globex session: 18:00 New York on the previous trading evening."""
-    s = now.normalize() + pd.Timedelta(hours=18)
-    if now < s:
-        s -= pd.Timedelta(days=1)
-    while s.weekday() in (4, 5):  # Friday/Saturday 18:00 -> the session opens Sunday 18:00
-        s -= pd.Timedelta(days=1)
-    return s
-
-
-def futures_summary(bars, now):
-    """bars: 5-minute OHLC (New York index) including extended hours. Returns last price, change against the
-    previous session's last trade, the overnight (Globex since 18:00) high/low and the previous regular session."""
-    bars = bars.dropna(subset=["Close"])
-    if bars.empty:
-        return None
-    start = session_start(now)
-    on, before = bars[bars.index >= start], bars[bars.index < start]
-    last, t = float(bars["Close"].iloc[-1]), bars.index[-1]
-    prev = float(before["Close"].iloc[-1]) if len(before) else None
-    mins = before.index.hour * 60 + before.index.minute
-    rth = before[(mins >= 570) & (mins < 960)]
-    r = None
-    if len(rth):
-        day = rth.index[-1].normalize()
-        g = rth[rth.index.normalize() == day]
-        r = dict(d=day.strftime("%Y-%m-%d"), o=_r(g["Open"].iloc[0]), h=_r(g["High"].max()), l=_r(g["Low"].min()),
-                 c=_r(g["Close"].iloc[-1]))
-    return dict(v=_r(last), t=_iso(t), prev=_r(prev), chg=_r(last - prev) if prev else None,
-                pct=_r((last / prev - 1) * 100) if prev else None,
-                on_h=_r(on["High"].max()) if len(on) else None, on_l=_r(on["Low"].min()) if len(on) else None,
-                on_from=_iso(start), rth=r)
 
 
 def daily_last(close):
@@ -228,10 +195,8 @@ def build_brief(data, now=None):
     now = now or pd.Timestamp.now(tz=NY)
     today = now.strftime("%Y-%m-%d")
     stocks = data["stocks"]
-    fb = _yf_bars([y for _k, y, _n in FUT], "5d", "5m", True)
-    fut = {k: dict(n=n, sym=y, link=QUOTE + y, **(futures_summary(fb[y], now) or {})) for k, y, n in FUT if y in fb}
     dl = {}
-    for k, y, n in MKT + WORLD:
+    for k, y, n in IDX + MKT + WORLD:
         try:
             c = yf.download(y, period="10d", interval="1d", auto_adjust=False, progress=False)["Close"]
             c = c[y] if isinstance(c, pd.DataFrame) else c
@@ -242,18 +207,20 @@ def build_brief(data, now=None):
             print("daily failed:", y, e)
     mkt = [dl[k] for k, _y, _n in MKT if k in dl] + treasury(now)
     world = [dl[k] for k, _y, _n in WORLD if k in dl]
+    idx = [dl[k] for k, _y, _n in IDX if k in dl]
     econ = economic_calendar(labels_file=str(ROOT / "cache" / "econ_labels.json")) or data.get("econ") or []
     for e in econ:
         e["key"] = e.get("imp") == 3 or any(k.lower() in (e.get("e") or "").lower() for k in KEY)
     earn_today, earn_done = earnings(today, stocks)
     want = {s["s"] for s in stocks if s.get("ndx") or pass_kc(s) or (s.get("mcap") or 0) >= 50}
-    want |= {e["s"] for e in earn_today + earn_done}
+    want |= {e["s"] for e in earn_today + earn_done} | {t for t, _n in ETF}
     mv = movers(_yf_bars(sorted(want), "5d", "5m", True), now)
-    b = dict(d=today, t=now_utc(), asof=data.get("asof"), fut=fut, mkt=mkt, world=world, econ=_econ_today(econ, today),
+    etf = [dict(k=t, n=n, link=QUOTE + t, **mv[t]) for t, n in ETF if t in mv]
+    b = dict(d=today, t=now_utc(), asof=data.get("asof"), idx=idx, etf=etf, mkt=mkt, world=world, econ=_econ_today(econ, today),
              earn_today=earn_today, earn_done=earn_done, movers=mv)
     b["score"] = [round(h["score"] * 100 / 16) for h in (data.get("hist") or [])[-1:]] + \
         [round(h["score"] * 100 / 16) for h in ((data.get("tech") or {}).get("hist") or [])[-1:]]
-    print(f"premarket {today}: NQ {fut.get('NQ', {}).get('v')}, {len(mkt)} market items, {len(world)} world, "
+    print(f"premarket {today}: {len(idx)} indices, {len(etf)} ETFs, {len(mkt)} market items, {len(world)} world, "
           f"{len(b['econ'])} releases, {len(earn_today)} reporting today, {len(earn_done)} reported, {len(mv)} movers")
     return b, econ
 

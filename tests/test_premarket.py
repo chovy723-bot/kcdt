@@ -17,27 +17,6 @@ def bars(start, end, base=100.0):
     return pd.DataFrame({"Open": c, "High": c + 0.5, "Low": c - 0.5, "Close": c}, index=idx)
 
 
-def test_session_start():
-    t = lambda s: pd.Timestamp(s, tz=NY)
-    assert pm.session_start(t("2026-10-30 06:00")) == t("2026-10-29 18:00")   # Friday morning
-    assert pm.session_start(t("2026-11-02 06:00")) == t("2026-11-01 18:00")   # Monday morning -> Sunday evening
-    assert pm.session_start(t("2026-10-29 19:00")) == t("2026-10-29 18:00")
-
-
-def test_futures_summary():
-    now = pd.Timestamp("2026-10-30 06:00", tz=NY)
-    b = bars("2026-10-28 18:00", "2026-10-30 06:00")
-    s = pm.futures_summary(b, now)
-    on = b[b.index >= pd.Timestamp("2026-10-29 18:00", tz=NY)]
-    assert s["v"] == round(b["Close"].iloc[-1], 2)
-    assert s["prev"] == round(b[b.index < pd.Timestamp("2026-10-29 17:00", tz=NY)]["Close"].iloc[-1], 2)
-    assert s["on_h"] == round(on["High"].max(), 2) and s["on_l"] == round(on["Low"].min(), 2)
-    rth = b[(b.index >= pd.Timestamp("2026-10-29 09:30", tz=NY)) & (b.index < pd.Timestamp("2026-10-29 16:00", tz=NY))]
-    assert s["rth"] == dict(d="2026-10-29", o=round(rth["Open"].iloc[0], 2), h=round(rth["High"].max(), 2),
-                            l=round(rth["Low"].min(), 2), c=round(rth["Close"].iloc[-1], 2))
-    assert s["pct"] > 0 and s["on_from"] == "2026-10-29T22:00Z"
-
-
 def test_movers():
     now = pd.Timestamp("2026-10-30 06:00", tz=NY)
     b = bars("2026-10-29 04:00", "2026-10-30 06:00")
@@ -55,8 +34,6 @@ def test_daily_last_and_prev_bday():
 
 
 if __name__ == "__main__":
-    test_session_start()
-    test_futures_summary()
     test_movers()
     test_daily_last_and_prev_bday()
     print("ok")

@@ -1372,8 +1372,8 @@ let PM=[];
 const hkHM = iso => new Date(iso).toLocaleTimeString('en-GB',{timeZone:'Asia/Hong_Kong',hour:'2-digit',minute:'2-digit',hour12:false});
 const pmKey = e => e.imp===3 || ECON_KEY.test(e.e||'');
 function pmLines(b){
-  const L=[], F=b.fut||{}, nq=F.NQ, es=F.ES, done=e=>e.a!=null;
-  if(nq&&nq.pct!=null) L.push(`<b>期貨</b>：NQ 報 ${f(nq.v)}，較上一節收市 <span class="${cls(nq.pct)}">${sgn(nq.pct,2)}%</span>${nq.on_h!=null?`（隔夜高 ${f(nq.on_h)}／低 ${f(nq.on_l)}）`:''}${es&&es.pct!=null?`；ES <span class="${cls(es.pct)}">${sgn(es.pct,2)}%</span>`:''}。`);
+  const L=[], done=e=>e.a!=null, I=Object.fromEntries((b.idx||[]).concat(b.etf||[]).map(x=>[x.k,x])), pc=x=>`<span class="${cls(x.pct)}">${sgn(x.pct,2)}%</span>`;
+  if(I.NDX) L.push(`<b>指數</b>：Nasdaq-100 ${I.NDX.d.slice(5)} 收市 ${f(I.NDX.v)}（${pc(I.NDX)}）${I.SPX?`；標普 500 ${f(I.SPX.v)}（${pc(I.SPX)}）`:''}${I.QQQ?`。QQQ ${I.QQQ.when==='pre'?'盤前':'盤後'} ${pc(I.QQQ)}`:''}${I.SPY?`，SPY ${pc(I.SPY)}`:''}。`);
   const out=(b.econ||[]).filter(e=>pmKey(e)&&done(e)), due=(b.econ||[]).filter(e=>pmKey(e)&&!done(e)&&e.u&&Date.parse(e.u)>Date.parse(b.t));
   if(out.length) L.push(`<b>已公布</b>：${out.slice(0,3).map(e=>`${econName(e)} ${esc(e.a)}${e.c?`（預期 ${esc(e.c)}）`:''}`).join('；')}。`);
   if(due.length) L.push(`<b>今日待公布</b>：${due.slice(0,3).map(e=>`${hkHM(e.u)} ${econName(e)}`).join('；')}（香港時間）。`);
@@ -1388,14 +1388,8 @@ function pmLines(b){
   return L;
 }
 const pmCard = (title, tag, big, sub, link, linkTxt) => `<div class="panel card"><div class="hd"><span>${title}</span>${tag?`<span class="chip">${tag}</span>`:''}</div><div class="big">${big}</div><div class="sub">${sub}</div>${link?`<a href="${link}" target="_blank" rel="noopener">${linkTxt} ↗</a>`:''}</div>`;
-function pmFut(k, x){
-  if(!x||x.v==null) return '';
-  const t=`${hkFmt(x.t)} 香港時間 · ${x.sym} · Yahoo 延遲報價`;
-  return pmCard(`${k} 最新報價`,'延遲',`${f(x.v)} <span class="small ${cls(x.pct)}">${sgn(x.pct,2)}%</span>`,`較上一節收市 ${f(x.prev)}（${sgn(x.chg,2)} 點）<br>${t}`,x.link,`Yahoo ${x.sym}`)
-    + (x.on_h!=null?pmCard(`${k} 隔夜高／低`,'Globex',`${f(x.on_h)} ／ ${f(x.on_l)}`,`由 ${hkFmt(x.on_from)}（紐約 18:00）開始計，到 ${hkFmt(x.t)}<br>5 分鐘線計，唔係交易所官方數字`,'',''):'')
-    + (x.rth?pmCard(`${k} 上一個正常交易時段`,'日內',`${f(x.rth.h)} ／ ${f(x.rth.l)}`,`${x.rth.d} 紐約 09:30–16:00 · 開 ${f(x.rth.o)} · 收 ${f(x.rth.c)}<br>5 分鐘線計，唔係 CME 官方結算價`,'',''):'');
-}
 const pmDaily = x => pmCard(x.n, '日終', `${f(x.v)}${x.u||''} ${x.pct!=null?`<span class="small ${cls(x.pct)}">${x.u==='%'?sgn(x.chg,2)+' 個百分點':sgn(x.pct,2)+'%'}</span>`:''}`, `${x.d} 收市 · ${x.src||'Yahoo'} 日線`, x.link, x.src?`${x.src} 每日息率`:`Yahoo ${x.sym}`);
+const pmEtf = x => pmCard(`${x.k} ${x.n}`, x.when==='pre'?'盤前':'盤後', `${f(x.v)} <span class="small ${cls(x.pct)}">${sgn(x.pct,2)}%</span>`, `較昨日收市 ${f(x.c)} · ${hkFmt(x.t)} 香港時間<br>盤前成交少，價格只供參考 · Yahoo`, x.link, `Yahoo ${x.k}`);
 let pmScope='ndx';
 function pmEarn(b){
   const M=b.movers||{}, pick=e=>pmScope==='all'||(pmScope==='ndx'?e.ndx:WL.has(e.s));
@@ -1426,12 +1420,12 @@ async function pmShow(d){
   $('pm-prev').disabled=i<=0; $('pm-next').disabled=i>=PM.length-1;
   let b; try{ b=await (await fetch(`pm/${d}.json`)).json() }catch(e){ $('pm').innerHTML='<div class="panel muted">讀唔到呢日嘅盤前報告，遲啲再試。</div>'; return }
   if(sel.value!==d) return;
-  const F=b.fut||{}, L=pmLines(b), got=[F.NQ,F.ES,...(b.mkt||[]),...(b.world||[])].filter(x=>x&&x.v!=null).length;
+  const L=pmLines(b), got=[...(b.idx||[]),...(b.etf||[]),...(b.mkt||[]),...(b.world||[])].filter(x=>x&&x.v!=null).length;
   const draw=()=>{
     $('pm').innerHTML = `<div class="panel lead pmhero"><div><span class="chip">${d===ymd(nyNow())?'今日':'紐約日期'} · ${d}</span><h3>今日，先留意呢幾件事。</h3><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>
       <p class="muted small" style="margin-top:8px">資料截至 ${hkFmt(b.t)}（香港時間）· 由下面數據自動整理，唔係建議</p></div>
-      <div class="pmstat"><div><b>${(b.econ||[]).filter(pmKey).length}</b><span class="muted small">重要經濟數據</span></div><div><b>${got}/${2+(b.mkt||[]).length+(b.world||[]).length}</b><span class="muted small">已取得市場項目</span></div></div></div>
-      <section><p class="kicker">Futures</p><h2>期貨</h2><div class="cards">${pmFut('NQ',F.NQ)}${pmFut('ES',F.ES)}</div></section>
+      <div class="pmstat"><div><b>${(b.econ||[]).filter(pmKey).length}</b><span class="muted small">重要經濟數據</span></div><div><b>${got}/${4+(b.mkt||[]).length+(b.world||[]).length}</b><span class="muted small">已取得市場項目</span></div></div></div>
+      <section><p class="kicker">Indices</p><h2>指數琴日收市同 ETF 盤前</h2><div class="cards">${(b.idx||[]).map(pmDaily).join('')}${(b.etf||[]).map(pmEtf).join('')}</div></section>
       <section><p class="kicker">Markets</p><h2>波動、美元、息率、商品</h2><div class="cards">${(b.mkt||[]).map(pmDaily).join('')}</div></section>
       <section><p class="kicker">Asia &amp; Europe</p><h2>亞洲同歐洲股市</h2><div class="cards">${(b.world||[]).map(pmDaily).join('')}</div>
         <p class="muted small">亞洲收市係香港時間下晝；歐洲未收市時顯示上一個收市價（睇日期）。</p></section>
