@@ -25,6 +25,9 @@ def test_movers():
     close = b[b.index < pd.Timestamp("2026-10-29 16:00", tz=NY)]["Close"].iloc[-1]
     assert m["AAA"]["c"] == round(close, 2) and m["AAA"]["when"] == "pre"
     assert m["BBB"]["when"] == "post"
+    # run in the evening: compare with today's close, and the quote is after hours
+    late = pm.movers({"AAA": b[b.index < pd.Timestamp("2026-10-29 20:00", tz=NY)]}, pd.Timestamp("2026-10-29 22:00", tz=NY))
+    assert late["AAA"]["c"] == round(close, 2) and late["AAA"]["when"] == "post"
 
 
 def test_daily_last_and_prev_bday():

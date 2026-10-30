@@ -131,15 +131,16 @@ def earnings(today, stocks):
 
 
 def movers(bars, now):
-    """Extended-hours move against yesterday's regular close, per ticker. bars: {ticker: 5-minute frame}."""
+    """Extended-hours move against the last regular-session close, per ticker. bars: {ticker: 5-minute frame}.
+    "pre" when the latest quote is from a later day than that close (this morning), else "post" (after the close)."""
     out = {}
-    today = now.normalize()
     for t, b in bars.items():
         b = b.dropna(subset=["Close"])
+        b = b[b.index <= now]
         if b.empty:
             continue
         mins = b.index.hour * 60 + b.index.minute
-        reg = b[(mins >= 570) & (mins < 960) & (b.index < today)]
+        reg = b[(mins >= 570) & (mins < 960)]
         if reg.empty:
             continue
         close = float(reg["Close"].iloc[-1])
@@ -148,7 +149,7 @@ def movers(bars, now):
             continue
         last, ts = float(after["Close"].iloc[-1]), after.index[-1]
         out[t] = dict(c=_r(close), v=_r(last), pct=_r((last / close - 1) * 100), t=_iso(ts),
-                      when="pre" if ts >= today else "post")
+                      when="pre" if ts.normalize() > reg.index[-1].normalize() else "post")
     return out
 
 
