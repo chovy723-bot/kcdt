@@ -82,16 +82,17 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      NOTIFY: chovy723-bot  # KC's GitHub account: assigned + mentioned, so GitHub emails KC
     steps:
       - if: needs.build.result != 'success' || needs.deploy.result != 'success'
         run: |
           open=$(gh issue list --label update-failed --state open --json number -q '.[0].number')
           if [ -n "$open" ]; then
-            gh issue comment "$open" --body "Failed again: $RUN_URL"
+            gh issue comment "$open" --body "@$NOTIFY 今日自動更新又失敗咗：$RUN_URL"
           else
             gh label create update-failed --color d73a4a --force
-            gh issue create --label update-failed --title "KCDT daily update failed" \
-              --body "@${{ github.repository_owner }} 今日自動更新失敗，網站仍然顯示上次嘅數據。Log: $RUN_URL"
+            gh issue create --label update-failed --title "KCDT daily update failed" --assignee "$NOTIFY" \
+              --body "@$NOTIFY 今日自動更新失敗，網站仍然顯示上次嘅數據。Log: $RUN_URL"
           fi
       - if: needs.build.result == 'success' && needs.deploy.result == 'success'
         run: |

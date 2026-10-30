@@ -43,6 +43,9 @@ a{color:var(--link)}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
 .stale{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 10%,var(--panel));color:var(--ink);border-radius:10px;padding:10px 14px;font-size:14px}
 .stale b{color:var(--hot)}
+.wlalert{border-left:3px solid var(--accent);display:grid;gap:6px}
+.wlalert ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.wlalert h2{font-size:16px}
 nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 nav.tabs a{flex:none;text-decoration:none;color:var(--muted);padding:8px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;font-weight:500;white-space:nowrap}
 nav.tabs a:hover{color:var(--ink)}
@@ -60,14 +63,27 @@ nav.tabs .side-brand,nav.tabs .side-foot,nav.tabs .navgrp{display:none}
   nav.tabs a[aria-current="page"]{background:var(--sel);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
   nav.tabs .side-brand{display:block;padding:4px 6px 18px;text-decoration:none}
   nav.tabs .side-brand h1{color:var(--ink);font-size:30px}
-  nav.tabs .navgrp{display:block;padding:14px 14px 4px;font-size:13px;color:var(--muted);font-weight:500}
-  nav.tabs .side-brand+.navgrp{padding-top:0}
+  nav.tabs .navgrp{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 12px);margin:10px 6px 2px;padding:12px 8px 4px;border:0;border-top:1px solid var(--line);background:none;font:inherit;font-size:13px;color:var(--muted);font-weight:500;cursor:pointer;text-align:left}
+  nav.tabs .navgrp:hover{color:var(--ink)}
+  nav.tabs .navgrp i{font-style:normal;font-size:12px;width:12px;text-align:center}
+  nav.tabs .navgrp i::before{content:"▾"}
+  nav.tabs .navgrp[aria-expanded="false"] i::before{content:"▸"}
+  nav.tabs a.gx{display:none}
+  nav.tabs .side-brand+.navgrp{margin-top:0;border-top:0;padding-top:0}
   nav.tabs .navabout{margin-top:14px;border-top:1px solid var(--line)!important;border-radius:0 0 9px 9px}
   nav.tabs .side-foot{display:block;margin-top:18px;padding:12px 6px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
   .top .brand{display:none}
 }
 nav.tabs a.stk{font-family:var(--f-data)}
-@media (max-width:640px){nav.tabs{flex-wrap:wrap;overflow:visible;row-gap:0}nav.tabs a{padding:8px 10px}}
+.stamps span.m{display:none}
+@media (max-width:640px){
+  nav.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;margin-inline:-16px;padding-inline:8px;
+    mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 24px),transparent)}
+  nav.tabs a{padding:8px 10px}
+  .top .badge{display:none}
+  .stamps span{display:none}
+  .stamps span.m{display:inline}
+}
 .view{display:grid;gap:22px}.view>*,#hx{min-width:0}
 
 section{display:grid;gap:12px}
@@ -98,6 +114,9 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px}
 .cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
 @media (max-width:860px){.cols2{grid-template-columns:minmax(0,1fr)}}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1300px){.cols3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cols3>:first-child{grid-column:1/-1}}
+@media (max-width:860px){.cols3{grid-template-columns:minmax(0,1fr)}}
 
 /* market */
 .hero{display:grid;grid-template-columns:minmax(0,270px) minmax(0,290px) minmax(0,1fr);gap:14px;align-items:start}
@@ -191,6 +210,20 @@ select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px 
 .linkbtn:hover{color:var(--accent)}
 tr.indx td{background:var(--bg)}
 table.ind{max-width:880px}
+@media (max-width:560px){
+  #indsum .tablewrap{overflow:visible}
+  #indsum table.ind,#indsum table.ind tbody{display:block;width:100%}
+  #indsum table.ind thead{display:none}
+  #indsum table.ind tr[data-k]{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  #indsum table.ind tr[data-k] td{display:block;padding:0;border:0;text-align:left}
+  #indsum table.ind tr[data-k] td:nth-child(1){grid-column:1/-1}
+  #indsum table.ind tr[data-k] td:nth-child(1) .linkbtn{font-weight:600;text-align:left}
+  #indsum table.ind tr[data-k] td:nth-child(2)::before{content:"今日 ";color:var(--muted);font-weight:400;font-size:13px}
+  #indsum table.ind tr[data-k] td:nth-child(3){justify-self:end}
+  #indsum table.ind tr[data-k] td:nth-child(4)::before{content:"較昨日 ";color:var(--muted);font-size:13px}
+  #indsum table.ind tr[data-k] td:nth-child(5){justify-self:end}
+  #indsum table.ind tr.indx,#indsum table.ind tr.indx td{display:block;padding:8px 0;border:0}
+}
 .pts{display:inline-flex;gap:3px}
 .pts i{width:10px;height:10px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
 .pts i.on1{background:var(--warm);border-color:var(--warm)}
@@ -241,6 +274,11 @@ table.ind{max-width:880px}
 .cfgrid .rng input{width:100%;min-width:0}
 .filters{display:grid;gap:10px}
 .filters.adv:not([open]){display:block}
+.more{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 16px}
+.more>summary{cursor:pointer;list-style-position:inside}
+.more[open]{display:grid;gap:14px}
+.more[open]>summary{margin-bottom:2px}
+.more .panel{background:var(--bg)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font:inherit;font-size:14px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--selline);color:var(--ink);background:var(--sel)}
@@ -320,18 +358,18 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 
   <nav class="tabs" aria-label="頁面"><div>
     <a class="side-brand" href="#market"><h1>KCDT</h1><span class="eyebrow">美股趨勢溫度計</span></a>
-    <span class="navgrp">睇市</span>
-    <a href="#market" data-v="market">大市</a>
-    <a href="#pm" data-v="pm">盤前需知</a>
-    <a href="#news" data-v="news">經濟及新聞</a>
-    <a href="#earnings" data-v="earnings">業績日曆</a>
-    <span class="navgrp">選股</span>
-    <a href="#ideas" data-v="ideas">機會</a>
-    <a href="#screener" data-v="screener">選股器</a>
-    <a href="#watch" data-v="watch">自選</a>
-    <span class="navgrp">復盤</span>
-    <a href="#journal" data-v="journal">交易日誌</a>
-    <a href="#history" data-v="history">歷史</a>
+    <button type="button" class="navgrp" data-g="look" aria-expanded="true"><span>睇市</span><i aria-hidden="true"></i></button>
+    <a href="#market" data-v="market" data-g="look">大市</a>
+    <a href="#pm" data-v="pm" data-g="look">盤前需知</a>
+    <a href="#news" data-v="news" data-g="look">經濟及新聞</a>
+    <a href="#earnings" data-v="earnings" data-g="look">業績日曆</a>
+    <button type="button" class="navgrp" data-g="pick" aria-expanded="true"><span>選股</span><i aria-hidden="true"></i></button>
+    <a href="#ideas" data-v="ideas" data-g="pick">機會</a>
+    <a href="#screener" data-v="screener" data-g="pick">選股器</a>
+    <a href="#watch" data-v="watch" data-g="pick">自選</a>
+    <button type="button" class="navgrp" data-g="review" aria-expanded="true"><span>復盤</span><i aria-hidden="true"></i></button>
+    <a href="#journal" data-v="journal" data-g="review">交易日誌</a>
+    <a href="#history" data-v="history" data-g="review">歷史</a>
     <a href="#about" data-v="about" class="navabout">說明及數據狀態</a>
     <a href="#" data-v="stock" class="stk" id="stocktab" hidden></a>
     <p class="side-foot">只供數據參考及教育用途，唔係投資建議。</p>
@@ -343,10 +381,10 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
       <h2 id="h-ov">大市概覽</h2>
       <p class="muted small" id="ov-t"></p>
     </section>
+    <section class="panel wlalert" id="wl-alert" aria-labelledby="h-wla" hidden></section>
     <section class="panel lead brief" aria-labelledby="h-brief">
       <div class="sechead"><h2 id="h-brief">今日三項重點</h2><span class="muted small" id="brief-d"></span></div>
       <ul id="brief"></ul>
-      <p class="small" id="brief-wl" hidden></p>
     </section>
     <section aria-labelledby="h-temp">
       <div class="sechead"><h2 id="h-temp">大市、科技股同市場情緒</h2></div>
@@ -364,13 +402,6 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
       </div>
       <div class="panel rebound" id="rebound" hidden></div>
     </section>
-    <section aria-labelledby="h-hist">
-      <div class="sechead"><h2 id="h-hist">趨勢風險分：過去 60 個交易日</h2><div class="controls tsel"></div></div>
-      <div class="panel" style="display:grid;gap:8px">
-        <div class="legend"><span><i style="background:var(--cool)"></i>0–30 低風險</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 高風險</span></div>
-        <svg class="chart" id="scorechart" viewBox="0 0 960 200" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
-      </div>
-    </section>
 
     <section aria-labelledby="h-idx">
       <div class="sechead"><h2 id="h-idx">指數</h2><span class="muted small">過去 60 個交易日</span></div>
@@ -383,16 +414,6 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
         <div class="controls"><button class="tog" id="b-ndx" aria-pressed="true">Nasdaq-100</button><button class="tog" id="b-all" aria-pressed="false">指數成份股 <span id="b-alln"></span> 隻</button><button class="tog" id="b-usa" aria-pressed="false">全美股 <span id="b-usan"></span> 隻</button></div>
       </div>
       <div class="bars" id="bars"></div>
-      <div class="cols2">
-        <div class="panel" style="display:grid;gap:8px">
-          <div class="sechead"><h3>Nasdaq-100 企喺均線上嘅比例</h3><div class="legend"><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
-          <svg class="chart" id="breadthchart" viewBox="0 0 640 220" role="img" aria-label="Nasdaq-100 企喺 50 日及 200 日線上嘅比例"></svg>
-        </div>
-        <div class="panel" style="display:grid;gap:8px">
-          <div class="sechead"><h3>S&amp;P 500 一年走勢</h3><div class="legend"><span><i style="background:var(--ink)"></i>收市</span><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
-          <svg class="chart" id="spxchart" viewBox="0 0 640 220" role="img" aria-label="S&amp;P 500 一年收市走勢連均線"></svg>
-        </div>
-      </div>
     </section>
 
     <section aria-labelledby="h-sector">
@@ -408,6 +429,24 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
       <div class="sechead"><h2 id="h-ind">風險分點計</h2><div class="controls tsel"></div></div>
       <div class="panel" id="indsum" style="display:grid;gap:10px"></div>
     </section>
+    <details class="more" id="morecharts">
+      <summary><b>更多圖表</b> <span class="muted small">60 日趨勢風險分、Nasdaq-100 企均線比例、標普一年走勢</span></summary>
+      <div class="cols3">
+        <section class="panel" aria-labelledby="h-hist60" style="display:grid;gap:8px;align-content:start">
+          <div class="sechead"><h3 id="h-hist60">趨勢風險分：過去 60 日</h3><div class="controls tsel"></div></div>
+          <div class="legend"><span><i style="background:var(--cool)"></i>0–30 低風險</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 高風險</span></div>
+          <svg class="chart" id="scorechart" viewBox="0 0 640 220" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
+        </section>
+        <div class="panel" style="display:grid;gap:8px;align-content:start">
+          <div class="sechead"><h3>Nasdaq-100 企喺均線上嘅比例</h3><div class="legend"><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
+          <svg class="chart" id="breadthchart" viewBox="0 0 640 220" role="img" aria-label="Nasdaq-100 企喺 50 日及 200 日線上嘅比例"></svg>
+        </div>
+        <div class="panel" style="display:grid;gap:8px;align-content:start">
+          <div class="sechead"><h3>S&amp;P 500 一年走勢</h3><div class="legend"><span><i style="background:var(--ink)"></i>收市</span><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
+          <svg class="chart" id="spxchart" viewBox="0 0 640 220" role="img" aria-label="S&amp;P 500 一年收市走勢連均線"></svg>
+        </div>
+      </div>
+    </details>
   </main>
 
   <!-- ===== 機會 ===== -->
@@ -713,7 +752,9 @@ const hkFmt = (iso, wd=false) => { if(!iso) return '—'; const P=Object.fromEnt
 const FTS = S.map(s=>s.fts).filter(Boolean).sort(), fNew = FTS[FTS.length-1];
 $('stamps').innerHTML = [`價格：${D.asof} 美股收市`,
   `基本面：每隻股票約 7 日輪流更新一次${fNew?`，最新 ${fNew.slice(5)}`:''}`,
-  `經濟數據擷取：${hkFmt(D.econ_t||D.news_t)}`, `新聞擷取：${hkFmt(D.news_t)}（香港時間）`].map(t=>`<span>${t}</span>`).join('');
+  `經濟數據擷取：${hkFmt(D.econ_t||D.news_t)}`, `新聞擷取：${hkFmt(D.news_t)}（香港時間）`].map(t=>`<span>${t}</span>`).join('')
+  // phones: one short line; the full list is in 說明及數據狀態
+  + `<span class="m">價格 ${D.asof.slice(5)} 收市 · 新聞 ${hkFmt(D.news_t)} · <a href="#about">數據狀態</a></span>`;
 // The update runs at 22:30 UTC Mon–Fri (06:30 Hong Kong); GitHub can start it late, so allow 2.5 hours.
 // Warn only once a run that should have finished hasn't, or when prices are 2+ sessions behind (1 could be a holiday).
 (function(){
@@ -727,8 +768,8 @@ $('stamps').innerHTML = [`價格：${D.asof} 美股收市`,
   if(!late && missed<2) return;
   $('stale').hidden=false;
   $('stale').innerHTML = late
-    ? `<b>數據未更新：</b>預定喺 ${hkFmt(new Date(due+GRACE).toISOString())}（香港時間）之前完成嘅自動更新未有出現，而家顯示嘅仲係 ${D.asof} 收市數據。自動更新可能出咗問題。`
-    : `<b>價格數據可能過期：</b>而家顯示嘅係 ${D.asof} 收市數據，之後已經有 ${missed} 個交易日未更新。`;
+    ? `<b>數據未更新：</b>預定喺 ${hkFmt(new Date(due+GRACE).toISOString())}（香港時間）之前完成嘅自動更新未有出現，而家顯示嘅仲係 ${D.asof} 收市數據。自動更新可能出咗問題，系統已自動發出通知。<a href="#about">數據狀態</a>`
+    : `<b>價格數據可能過期：</b>而家顯示嘅係 ${D.asof} 收市數據，之後已經有 ${missed} 個交易日未更新。<a href="#about">數據狀態</a>`;
 })();
 
 // ---------- search ----------
@@ -752,10 +793,31 @@ function route(){
   document.querySelectorAll('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current', a.dataset.v===v) || a.removeAttribute('aria-current'));
   document.querySelectorAll('nav.tabs a').forEach(a=>{ if(a.dataset.v===v) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current') });
   if(v==='stock'){ const t=h.slice(2); $('stocktab').hidden=false; $('stocktab').textContent=t; $('stocktab').href='#s/'+t; showStock(t) }
+  navGroups();
+  const nav=document.querySelector('nav.tabs'), cur=nav.querySelector('a[aria-current="page"]');
+  if(cur && nav.scrollWidth>nav.clientWidth){const a=cur.getBoundingClientRect(), n=nav.getBoundingClientRect(); nav.scrollLeft+=a.left-n.left-(n.width-a.width)/2}
   if(!drawn[v] && DRAW[v]){ DRAW[v](); drawn[v]=true }
   window.scrollTo(0,0);
 }
 const DRAW = {};
+
+// ---------- sidebar groups (desktop): click a heading to collapse / expand; the current page's group stays open ----------
+const NAVKEY='kcdt-nav-closed';
+let navClosed=[]; try{navClosed=JSON.parse(localStorage.getItem(NAVKEY)||'[]')}catch(e){}
+function navGroups(){
+  const cur=(document.querySelector('nav.tabs a[aria-current="page"]')||{}).dataset?.g;
+  document.querySelectorAll('nav.tabs .navgrp').forEach(b=>{
+    const g=b.dataset.g, open=!navClosed.includes(g)||g===cur;
+    b.setAttribute('aria-expanded',open);
+    document.querySelectorAll(`nav.tabs a[data-g="${g}"]`).forEach(a=>a.classList.toggle('gx',!open));
+  });
+}
+document.querySelectorAll('nav.tabs .navgrp').forEach(b=>b.onclick=()=>{
+  const g=b.dataset.g, open=b.getAttribute('aria-expanded')==='true';
+  navClosed=navClosed.filter(x=>x!==g); if(open) navClosed.push(g);
+  try{localStorage.setItem(NAVKEY,JSON.stringify(navClosed))}catch(e){}
+  if(open){ document.querySelectorAll(`nav.tabs a[data-g="${g}"]`).forEach(a=>a.classList.add('gx')); b.setAttribute('aria-expanded','false') } else navGroups();
+});
 
 // ---------- shared charts ----------
 function candles(svg, m, {W, H, L=4, R=46, T=6, B=16}){
@@ -802,7 +864,7 @@ DRAW.market = () => {
     box.querySelectorAll('button').forEach(b=>b.onclick=()=>{tsel=b.dataset.t;tbtn();drawTemp()})});
   const drawTemp=()=>{
     const H=T[tsel].hist, rules=T[tsel].rules, last=H[H.length-1];
-    const svg=$('scorechart'); svg.innerHTML=''; const W=innerWidth<700?480:960,Hh=200; svg.setAttribute('viewBox',`0 0 ${W} ${Hh}`); const L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
+    const svg=$('scorechart'); svg.innerHTML=''; const W=Math.round($('scorechart').getBoundingClientRect().width)||640,Hh=Math.round(Math.min(220,Math.max(160,W*0.34))); svg.setAttribute('viewBox',`0 0 ${W} ${Hh}`); const L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
     const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
     [0,5,10,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=P100(v)});
@@ -839,6 +901,9 @@ DRAW.market = () => {
     {min:lo,max:hi,ticks:tks,fmt:t=>t.toLocaleString('en-US'),labels:[[0,'一年前','start'],[Math.floor(C.length/2),'半年前','middle'],[C.length-1,D.asof.slice(5),'end']]});
 
   tbtn(); drawTemp();
+  // the 60-day chart sits in 更多圖表: draw it at its real width once it is opened
+  $('morecharts').addEventListener('toggle',()=>{if($('morecharts').open) drawTemp()});
+  let rz; addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(()=>{if($('morecharts').open) drawTemp()},200)});
 
   drawSectors();
 };
@@ -922,11 +987,17 @@ function brief(T){
   $('brief-d').textContent=`${D.asof} 收市 · 由下面數據自動整理，唔係建議`;
   briefWatch();
 }
-// Watchlist line: only when something on it changed today
-function briefWatch(){ const e=$('brief-wl'); if(!e) return;
-  const hit=[...WL.keys()].map(t=>BY[t]).filter(Boolean).map(s=>[s,stockChanges(s)]).filter(x=>x[1].length);
-  e.hidden=!hit.length;
-  e.innerHTML=hit.length?`★ 自選有 ${hit.length} 隻今日有變：${hit.slice(0,4).map(([s,c])=>`${tk(s)} ${c[0].txt.replace(/^今日/,'')}`).join('；')}${hit.length>4?' 等':''} · <a href="#watch">自選清單</a>`:'';
+// 自選提示 at the top of 大市: watchlist stocks that crossed the 50/200-day line at the last close, or report today / next trading day
+function briefWatch(){ const e=$('wl-alert'); if(!e) return;
+  const t0=ymd(nyNow()); let k=1, t1=edDay(1); while([0,6].includes(new Date(t1+'T12:00:00Z').getUTCDay())) t1=edDay(++k);
+  const items=[];
+  [...WL.keys()].map(t=>BY[t]).filter(Boolean).forEach(s=>{
+    stockChanges(s).filter(c=>c.g==='up'||c.g==='dn').forEach(c=>items.push({o:c.g==='dn'?0:1, h:`${tk(s)} <span class="${c.g==='dn'?'down':'up'}">${c.txt}</span>`}));
+    if(eNext(s)&&(s.edate===t0||s.edate===t1)) items.push({o:2, h:`${tk(s)} ${s.edate===t0?'今日':k===1?'明日':`下個交易日（${s.edate.slice(5)}）`}${ETIME[s.etime]?ETIME[s.etime]:''}出業績${s.econf?'':'（預計日期）'}`});
+  });
+  e.hidden=!items.length;
+  e.innerHTML=items.length?`<div class="sechead"><h2 id="h-wla">★ 自選提示</h2><span class="muted small">${D.asof} 收市 · 只計自選清單 · <a href="#watch">自選清單</a></span></div>
+    <ul>${items.sort((a,b)=>a.o-b.o).map(x=>`<li class="small">${x.h}</li>`).join('')}</ul>`:'';
 }
 
 // ---------- CNN Fear & Greed ----------
