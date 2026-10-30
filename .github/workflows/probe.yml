@@ -2,17 +2,51 @@ name: probe
 on:
   push:
     branches: [claude/probe]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-          for d in 2025-12-06 2025-12-17 2026-01-10 2026-02-14 2026-03-07 2026-03-14 2026-10-03 2026-10-15 2026-10-29 2026-11-07 2026-11-11 2026-11-14; do
-            echo "== $d"; curl -s -m 30 -A "$UA" -H "Accept: application/json" -H "Origin: https://www.nasdaq.com" -H "Referer: https://www.nasdaq.com/" "https://api.nasdaq.com/api/calendar/economicevents?date=$d" -o e.json
-            python3 -c "
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Screenshot the design reference
+        run: |
+          mkdir -p shots
+          cat > shot.py <<'PY'
           import json
-          d=json.load(open('e.json')); rows=((d.get('data') or {}).get('rows')) or []
-          for x in rows: print(x.get('gmt'), '|', x.get('country'), '|', x.get('eventName'), '|', x.get('actual'))
-          "
-          done
+          from playwright.sync_api import sync_playwright
+          URL = "https://kc-prop-firm-hub.syrupybuddy32.chatgpt.site/"
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for tag, w, h in [("d", 1440, 900), ("m", 390, 844)]:
+                  pg = b.new_page(viewport={"width": w, "height": h})
+                  r = pg.goto(URL, wait_until="networkidle", timeout=60000)
+                  print(tag, "status", r.status if r else None, pg.title())
+                  pg.wait_for_timeout(4000)
+                  pg.screenshot(path=f"shots/{tag}-full.png", full_page=True)
+                  if tag == "d":
+                      open("shots/page.html", "w").write(pg.content())
+                      info = pg.evaluate("""() => {
+                        const cs = e => { const s = getComputedStyle(e); return {font: s.fontFamily, size: s.fontSize, weight: s.fontWeight, color: s.color, bg: s.backgroundColor, radius: s.borderRadius, border: s.border, shadow: s.boxShadow, pad: s.padding} };
+                        const pick = sel => [...document.querySelectorAll(sel)].slice(0, 3).map(e => ({sel, text: (e.innerText || '').slice(0, 60), ...cs(e)}));
+                        const root = getComputedStyle(document.documentElement), vars = {};
+                        for (const sh of document.styleSheets) { try { for (const r of sh.cssRules) if (r.selectorText === ':root') for (const k of r.style) vars[k] = r.style.getPropertyValue(k) } catch (e) {} }
+                        return {vars, body: cs(document.body), parts: [].concat(pick('h1'), pick('h2'), pick('h3'), pick('nav a'), pick('button'), pick('table'), pick('th'), pick('[class*=card]'), pick('[class*=badge]')),
+                                fonts: [...document.fonts].map(f => f.family + ' ' + f.weight).slice(0, 20), links: [...document.querySelectorAll('a')].slice(0, 40).map(a => a.innerText.trim().slice(0, 30) + ' -> ' + a.getAttribute('href'))};
+                      }""")
+                      open("shots/style.json", "w").write(json.dumps(info, ensure_ascii=False, indent=1))
+                      txt = pg.evaluate("() => document.body.innerText")
+                      open("shots/text.txt", "w").write(txt)
+              b.close()
+          PY
+          python shot.py
+      - name: Save to branch
+        run: |
+          git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan claude/probe-shots
+          git rm -rq --cached . ; git add shots ; git commit -qm "design reference shots"
+          git push -f origin claude/probe-shots
