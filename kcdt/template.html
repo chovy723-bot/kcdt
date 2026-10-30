@@ -103,6 +103,9 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 .note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px}
 .cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
 @media (max-width:860px){.cols2{grid-template-columns:minmax(0,1fr)}}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1300px){.cols3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cols3>:first-child{grid-column:1/-1}}
+@media (max-width:860px){.cols3{grid-template-columns:minmax(0,1fr)}}
 
 /* market */
 .hero{display:grid;grid-template-columns:minmax(0,270px) minmax(0,290px) minmax(0,1fr);gap:14px;align-items:start}
@@ -403,19 +406,17 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     </section>
     <details class="more" id="morecharts">
       <summary><b>更多圖表</b> <span class="muted small">60 日趨勢風險分、Nasdaq-100 企均線比例、標普一年走勢</span></summary>
-      <section aria-labelledby="h-hist60">
-        <div class="sechead"><h3 id="h-hist60">趨勢風險分：過去 60 個交易日</h3><div class="controls tsel"></div></div>
-        <div class="panel" style="display:grid;gap:8px">
+      <div class="cols3">
+        <section class="panel" aria-labelledby="h-hist60" style="display:grid;gap:8px;align-content:start">
+          <div class="sechead"><h3 id="h-hist60">趨勢風險分：過去 60 日</h3><div class="controls tsel"></div></div>
           <div class="legend"><span><i style="background:var(--cool)"></i>0–30 低風險</span><span><i style="background:var(--warm)"></i>31–62 警戒</span><span><i style="background:var(--hot)"></i>63–100 高風險</span></div>
-          <svg class="chart" id="scorechart" viewBox="0 0 960 200" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
-        </div>
-      </section>
-      <div class="cols2">
-        <div class="panel" style="display:grid;gap:8px">
+          <svg class="chart" id="scorechart" viewBox="0 0 640 220" role="img" aria-label="過去 60 日趨勢風險分柱狀圖"></svg>
+        </section>
+        <div class="panel" style="display:grid;gap:8px;align-content:start">
           <div class="sechead"><h3>Nasdaq-100 企喺均線上嘅比例</h3><div class="legend"><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
           <svg class="chart" id="breadthchart" viewBox="0 0 640 220" role="img" aria-label="Nasdaq-100 企喺 50 日及 200 日線上嘅比例"></svg>
         </div>
-        <div class="panel" style="display:grid;gap:8px">
+        <div class="panel" style="display:grid;gap:8px;align-content:start">
           <div class="sechead"><h3>S&amp;P 500 一年走勢</h3><div class="legend"><span><i style="background:var(--ink)"></i>收市</span><span><i style="background:var(--accent)"></i>50 日線</span><span><i style="background:var(--warm)"></i>200 日線</span></div></div>
           <svg class="chart" id="spxchart" viewBox="0 0 640 220" role="img" aria-label="S&amp;P 500 一年收市走勢連均線"></svg>
         </div>
@@ -834,7 +835,7 @@ DRAW.market = () => {
     box.querySelectorAll('button').forEach(b=>b.onclick=()=>{tsel=b.dataset.t;tbtn();drawTemp()})});
   const drawTemp=()=>{
     const H=T[tsel].hist, rules=T[tsel].rules, last=H[H.length-1];
-    const svg=$('scorechart'); svg.innerHTML=''; const W=Math.round($('scorechart').getBoundingClientRect().width)||960,Hh=W<700?220:200; svg.setAttribute('viewBox',`0 0 ${W} ${Hh}`); const L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
+    const svg=$('scorechart'); svg.innerHTML=''; const W=Math.round($('scorechart').getBoundingClientRect().width)||640,Hh=Math.round(Math.min(220,Math.max(160,W*0.34))); svg.setAttribute('viewBox',`0 0 ${W} ${Hh}`); const L=28,R=8,Tp=10,B=26, n=H.length, bw=(W-L-R)/n;
     const y=v=>Tp+(Hh-Tp-B)*(1-v/16);
     const g=el('g',{class:'grid'},svg);
     [0,5,10,16].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v)},g);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end'},svg).textContent=P100(v)});
