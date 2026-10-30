@@ -569,7 +569,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
   <!-- ===== 交易日誌 ===== -->
   <main class="view" id="v-journal" hidden>
     <section aria-labelledby="h-jn">
-      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="small"><span class="badge" id="j-where">儲存位置：呢部機嘅瀏覽器</span> <span class="muted" id="loginmsg"></span></span></div>
+      <div class="sechead"><h2 id="h-jn">交易日誌</h2><span class="small"><span class="badge" id="j-where">儲存位置：呢部機嘅瀏覽器</span> <span class="badge" id="j-count" hidden></span> <span class="muted" id="loginmsg"></span></span></div>
       <div class="stats" id="j-stats"></div>
     </section>
     <section class="panel jform" aria-labelledby="h-jf">
@@ -1828,7 +1828,8 @@ function jZoom(src){const d=$('j-img'); d.querySelector('img').src=src; d.showMo
 function jShotsDraw(){ $('j-shots').innerHTML = jShots.map((s,i)=>`<span class="thumb"><img src="${s}" alt="截圖 ${i+1}"><button type="button" data-i="${i}" aria-label="刪除截圖 ${i+1}">×</button></span>`).join('');
   $('j-shots').querySelectorAll('img').forEach(im=>im.onclick=()=>jZoom(im.src));
   $('j-shots').querySelectorAll('button').forEach(b=>b.onclick=()=>{jShots.splice(+b.dataset.i,1); jShotsDraw()}); }
-function shrink(file, max=1280, q=.7){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
+// screenshots ride inside the trade record (Firestore caps a record at 1 MB): ~1000px JPEG keeps two well under that
+function shrink(file, max=1000, q=.6){ return new Promise((ok,bad)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/img.width), c=document.createElement('canvas');
   c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg',q)) }; img.onerror=bad; img.src=URL.createObjectURL(file) }) }
 function jMsg(t){$('j-msg').textContent=t; clearTimeout(jMsg.t); jMsg.t=setTimeout(()=>$('j-msg').textContent='',4000)}
 // Stock or futures: show the matching labels and fields
@@ -1861,7 +1862,11 @@ function jLoad(id){ const t = TR.find(x=>x.id===id), F=$('jf'); if(!t) return; j
   $('h-jf').scrollIntoView({behavior:'smooth',block:'start'}) }
 function jReset(){ jEdit=null; jShots=[]; jFills=[]; $('jf').reset(); $('jf').elements.open.value=ymd(nyNow()); jShotsDraw(); jFillsDraw(); jMkt();
   $('j-tz').value=Store.get('jtz','HK'); $('h-jf').textContent='新增交易'; $('j-del').hidden=true; $('j-save').textContent='儲存交易' }
-async function jReload(){ TR = await DB.all('trades'); $('j-where').textContent = DB.where; jRender() }
+// Per-person cap so the shared free Firebase quota (1 GB stored, 50,000 reads a day) lasts; opening the journal reads every trade once
+const J_MAX=1000;
+function jCount(){ const e=$('j-count'), n=TR.length; e.hidden=false; e.textContent=`已用 ${n.toLocaleString('en-US')} / ${J_MAX.toLocaleString('en-US')} 單`;
+  e.style.borderColor=n>=J_MAX*0.9?'var(--hot)':''; e.title=n>=J_MAX*0.9?'就快到上限：記得下載完整備份，再刪走舊紀錄':'' }
+async function jReload(){ TR = await DB.all('trades'); $('j-where').textContent = DB.where; jCount(); jRender() }
 DRAW.journal = () => {
   if(!DRAW.journal.done){ DRAW.journal.done=1;
     $('jf').insertAdjacentHTML('beforeend','<datalist id="j-futs"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option><option>YM</option><option>RTY</option></datalist>');
@@ -1888,6 +1893,7 @@ DRAW.journal = () => {
       if(fills.length && t.close==null && t.sell!=null) t.sell=null;  // partly closed: the trade stays open
       if(t.close && t.close<t.open){ jMsg('平倉日期早過開倉日期'); return }
       if(!t.open || t.qty==null || t.buy==null){ jMsg('要填開倉日期、數量同入場價'); return }
+      if(!jEdit && TR.length>=J_MAX){ jMsg(`已經儲咗 ${J_MAX.toLocaleString('en-US')} 單（上限）。請先「下載完整備份」，再刪走啲舊紀錄。`); return }
       try{ await DB.put('trades', t) }catch(_){ jMsg(DB===LocalDB?'儲唔到：瀏覽器空間滿咗，試下刪走啲截圖':'儲唔到：網絡或者截圖太大，遲啲再試'); return }
       await jReload(); jReset(); jMsg('已儲存') };
     $('j-del').onclick=async()=>{ if(!jEdit) return; await DB.del('trades', jEdit); await jReload(); jReset(); jMsg('已刪除') };
@@ -1900,6 +1906,8 @@ DRAW.journal = () => {
       let bak; try{ bak=JSON.parse(await fl.text()) }catch(_){ jMsg('呢個唔係 KCDT 備份檔'); return }
       if(!bak||bak.app!=='KCDT'||!Array.isArray(bak.trades)){ jMsg('呢個唔係 KCDT 備份檔'); return }
       const had=new Set(TR.map(x=>x.id)); let n=0, same=0;
+      const add=new Set(bak.trades.filter(t=>t&&t.id&&!had.has(t.id)).map(t=>t.id)).size;
+      if(had.size+add>J_MAX){ jMsg(`匯入之後會有 ${(had.size+add).toLocaleString('en-US')} 單，超過上限 ${J_MAX.toLocaleString('en-US')} 單。請先刪走啲舊紀錄。`); return }
       try{ for(const t of bak.trades) if(t&&t.id&&t.sym&&t.open){ if(had.has(t.id)) same++; await DB.put('trades',t); n++ }
         for(const p of bak.presets||[]) if(p&&p.id) await DB.put('presets',p);
         for(const w of bak.watch||[]) if(w&&w.id) await DB.put('watch',w) }catch(_){ jMsg(`匯入咗 ${n} 單之後儲唔到（空間唔夠？）`); await jReload(); return }
