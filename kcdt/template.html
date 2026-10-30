@@ -50,7 +50,7 @@ nav.tabs a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--ac
 nav.tabs>div{display:contents}
 nav.tabs .side-brand,nav.tabs .side-foot,nav.tabs .navgrp{display:none}
 @media (min-width:1100px){
-  .wrap{max-width:1440px;grid-template-columns:200px minmax(0,1fr);column-gap:32px;padding-left:0}
+  .wrap{max-width:none;margin:0;grid-template-columns:220px minmax(0,1fr);column-gap:32px;padding-left:0;padding-right:32px}
   .wrap>*{grid-column:2}
   .wrap{row-gap:0}.wrap>:not(nav){margin-bottom:22px}
   nav.tabs{grid-column:1;grid-row:1/span 30;align-self:stretch;flex-direction:column;gap:2px;border:0;border-right:1px solid var(--line);
@@ -109,12 +109,14 @@ th button[data-active="true"]{color:var(--ink);font-weight:700}
 @media (max-width:1100px){.hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.hero .wide{grid-column:1/-1}}
 @media (max-width:640px){.hero{grid-template-columns:minmax(0,1fr)}}
 .fng{display:grid;gap:8px;align-content:start}
+#fnggauge{max-width:300px;justify-self:center}
+#fngline{max-height:70px}
 .fng .vals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:13px;text-align:center}
 .fng .vals b{display:block;font-family:var(--f-data);font-size:15px}
 .thermo{display:grid;gap:12px;align-content:start}
 .score{display:flex;align-items:baseline;gap:10px}
 .score b{font-family:var(--f-data);font-weight:600;font-size:40px;line-height:1}
-.temp1{display:grid;gap:8px}
+.temp1{display:grid;gap:8px;align-content:start}
 .temp1 .row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .temp1 .row b{font-size:16px;font-weight:600}
 .panic{border:1px solid var(--hot);background:color-mix(in srgb,var(--hot) 8%,var(--panel));border-radius:12px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
@@ -218,6 +220,9 @@ table.ind{max-width:880px}
 .heat .t1{font-weight:600;fill:var(--tile-ink)}
 .heat .t2{fill:var(--tile-ink);opacity:.9}
 .heat .sl{fill:var(--muted);font-size:12px;font-family:var(--f-body)}
+.heat{position:relative}
+.heattip{position:absolute;z-index:5;pointer-events:none;background:var(--raise);border:1px solid var(--ctlline);border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:240px}
+.heattip b{font-size:14px}
 
 /* screener */
 .cfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -416,7 +421,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-map">
       <div class="sechead"><h2 id="h-map">Nasdaq-100 熱力圖</h2>
         <div class="controls"><button class="tog" id="h-1" aria-pressed="true">1 日</button><button class="tog" id="h-5" aria-pressed="false">5 日</button><button class="tog" id="h-21" aria-pressed="false">1 個月</button></div></div>
-      <div class="panel heat"><svg class="chart" id="heat" viewBox="0 0 1200 620" role="img" aria-label="Nasdaq-100 按板塊同市值嘅表現熱力圖"></svg>
+      <div class="panel heat"><div class="heattip" id="heattip" hidden></div><svg class="chart" id="heat" viewBox="0 0 1200 620" role="img" aria-label="Nasdaq-100 按板塊同市值嘅表現熱力圖"></svg>
         <p class="muted small" id="heatnote" style="margin-top:6px"></p></div>
     </section>
     <section aria-labelledby="h-sig">
@@ -965,27 +970,53 @@ function squarify(items, x, y, w, h){ // items sorted desc by v; returns items w
   return out;
 }
 let heatK='chg';
+function svgHeatInit(){
+  const svg=$('heat'); let w=svg.getBoundingClientRect().width, tm;
+  svg.addEventListener('pointerdown',e=>{heat.touch=e.pointerType!=='mouse'});
+  document.addEventListener('pointerdown',e=>{if(!svg.contains(e.target)){$('heattip').hidden=true; heat.tapped=null}});
+  addEventListener('resize',()=>{clearTimeout(tm); tm=setTimeout(()=>{const n=svg.getBoundingClientRect().width; if(n && Math.abs(n-w)>40){w=n; heat()}},200)});
+}
 function heat(){
-  const svg=$('heat'); svg.innerHTML='';
-  const W=1200,H=620, rows=S.filter(s=>s.ndx), withCap=rows.filter(s=>s.mcap);
+  const svg=$('heat'); svg.innerHTML=''; const tip=$('heattip'); tip.hidden=true;
+  // draw in real pixels so font sizes are what KC actually sees
+  const W=Math.max(300,Math.round(svg.getBoundingClientRect().width)||1200), H=Math.round(W<700?W*1.7:Math.min(W*0.5,760));
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const fits=(node,w,h)=>{const b=node.getBBox(); return b.width+8<=w && b.height+2<=h};
+  const  rows=S.filter(s=>s.ndx), withCap=rows.filter(s=>s.mcap);
   const useCap=withCap.length>=rows.length*0.8, list=(useCap?withCap:rows).map(s=>({...s,v:useCap?s.mcap:(s.av*s.c)}));
   const groups={}; list.forEach(s=>{(groups[s.sec]=groups[s.sec]||[]).push(s)});
   const gl=Object.entries(groups).map(([k,v])=>({k,v:v.reduce((a,b)=>a+b.v,0),items:v.sort((a,b)=>b.v-a.v)})).sort((a,b)=>b.v-a.v);
   const span=heatK==='chg'?3:heatK==='r5'?6:12;
   squarify(gl,0,0,W,H).forEach(g=>{
     el('rect',{x:g.x,y:g.y,width:g.w,height:g.h,fill:'var(--panel)',stroke:'var(--bg)','stroke-width':3},svg);
-    const lab=el('text',{x:g.x+5,y:g.y+13,class:'sl'},svg); lab.textContent=g.w>60?(ZH[g.k]||g.k):'';
+    const lab=el('text',{x:g.x+5,y:g.y+13,class:'sl'},svg); lab.textContent=ZH[g.k]||g.k; if(!fits(lab,g.w,g.h)) lab.remove();
     squarify(g.items,g.x+2,g.y+17,Math.max(0,g.w-4),Math.max(0,g.h-19)).forEach(t=>{
       const v=t[heatK]??0, k=Math.min(1,Math.abs(v)/span), mix=Math.round(25+75*k);
       const fill=v>0?`color-mix(in srgb, var(--up) ${mix}%, var(--flat))`:v<0?`color-mix(in srgb, var(--down) ${mix}%, var(--flat))`:'var(--flat)';
       const r=el('rect',{x:t.x,y:t.y,width:Math.max(0,t.w-1),height:Math.max(0,t.h-1),fill,class:'tile'},svg);
-      r.addEventListener('click',()=>{location.hash='s/'+t.s});
-      el('title',{},r).textContent=`${t.s} ${t.n}\n${sgn(v,2)}%${t.mcap?`\n市值 ${f(t.mcap*10,0)} 億美元`:''}\n撳一下睇圖`;
-      const fs=Math.max(7,Math.min(26,Math.sqrt(t.w*t.h)/4.2));
-      let fz=fs; while(fz>6 && t.s.length*fz*0.64+3>t.w) fz--;
-      if(t.s.length*fz*0.64+3<=t.w && t.h>fz*1.1){
-        const a=el('text',{x:t.x+t.w/2,y:t.y+t.h/2-(t.h>fz*2.6?fz*0.15:-fz*0.35),'text-anchor':'middle',class:'t1','font-size':fz},svg); a.textContent=t.s;
-        if(t.h>fz*2.6 && (sgn(v,2)+'%').length*fz*0.62*0.64+3<=t.w){const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.95,'text-anchor':'middle',class:'t2','font-size':fz*0.62},svg); b.textContent=sgn(v,2)+'%'}
+      const info=`<b>${t.s}</b> ${esc(t.n)}<br><span class="${cls(v)}">${sgn(v,2)}%</span>${t.mcap?` · 市值 ${f(t.mcap*10,0)} 億美元`:''}`;
+      const show=e=>{const box=svg.parentElement.getBoundingClientRect(); tip.innerHTML=info; tip.hidden=false;
+        const x=e.clientX-box.left, y=e.clientY-box.top, tw=tip.offsetWidth;
+        tip.style.left=Math.max(4,Math.min(x+12, box.width-tw-4))+'px'; const th=tip.offsetHeight; tip.style.top=(y+16+th>box.height?Math.max(4,y-th-8):y+16)+'px'};
+      r.addEventListener('pointermove',e=>{if(e.pointerType==='mouse') show(e)});
+      r.addEventListener('pointerleave',()=>{tip.hidden=true});
+      // touch: first tap shows the details, second tap on the same tile opens the chart
+      r.addEventListener('click',e=>{ if(heat.touch && heat.tapped!==t.s){heat.tapped=t.s; show(e); tip.innerHTML+='<br><span class="muted">再撳一下睇圖</span>'; return}
+        location.hash='s/'+t.s });
+      r.setAttribute('aria-label',`${t.s} ${sgn(v,2)}%`);
+      // labels only when they are readable (≥ 11px) and fit inside the tile; otherwise hover / tap shows them
+      let fz=Math.min(24,Math.sqrt(t.w*t.h)/3.4);
+      if(fz>=11){
+        const a=el('text',{x:t.x+t.w/2,y:t.y+t.h/2,'text-anchor':'middle','dominant-baseline':'central',class:'t1','font-size':fz},svg); a.textContent=t.s;
+        while(fz>11 && !fits(a,t.w,t.h)){fz--; a.setAttribute('font-size',fz)}
+        if(!fits(a,t.w,t.h)) a.remove();
+        else {
+          const pz=Math.max(11,fz*0.68);
+          if(t.h>=(fz+pz)*1.45){
+            const b=el('text',{x:t.x+t.w/2,y:t.y+t.h/2+fz*0.68,'text-anchor':'middle','dominant-baseline':'central',class:'t2','font-size':pz},svg); b.textContent=sgn(v,2)+'%';
+            if(fits(b,t.w,t.h)) a.setAttribute('y',t.y+t.h/2-pz*0.68); else b.remove();
+          }
+        }
       }
     });
   });
@@ -1032,6 +1063,7 @@ DRAW.ideas = () => {
   drawChanges();
   [['h-1','chg'],['h-5','r5'],['h-21','r21']].forEach(([id,k])=>$(id).onclick=()=>{setPressed(['h-1','h-5','h-21'],id);heatK=k;heat()});
   heat();
+  svgHeatInit();
   const topN=(arr,k,dir=-1,n=6)=>[...arr].sort((a,b)=>((a[k]??-1e9)-(b[k]??-1e9))*dir).slice(0,n);
   const sigRows=(title,rows,tag)=>`<tr class="grp"><td colspan="5">${title}</td></tr>`+(rows.length?rows.map(s=>`<tr><td style="white-space:nowrap">${star(s.s)}${tk(s)}${s.ndx?' <span class="muted small">N100</span>':''}</td><td class="r num">${f(s.c)}</td><td class="r num ${cls(s.chg)}">${sgn(s.chg,2)}%</td><td class="r num muted">${kvol(s.vol)}</td><td class="tag">${tag(s)}</td></tr>`).join(''):'<tr><td colspan="5" class="muted small">今日冇</td></tr>');
   $('sigL').innerHTML =
