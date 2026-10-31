@@ -110,6 +110,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th{font-size:13px;font-weight:500;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:5px 8px;border-bottom:1px solid var(--soft);vertical-align:middle}
 td.r,th.r{text-align:right}
+/* stock tables: every column centred, header and values alike; the ticker column stays left */
+table.cen th,table.cen td{text-align:center}table.cen tr>:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
 a.tk{font-weight:700;color:var(--ink);text-decoration:none;font-family:var(--f-data)}
 a.tk:hover{color:var(--accent);text-decoration:underline}
@@ -513,8 +515,8 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
     <section aria-labelledby="h-sig">
       <div class="sechead"><h2 id="h-sig">今日訊號</h2><span class="muted small">股票池：全美股（市值 3 億、股價 12 美元以上）加指數成份股。撳代號睇圖。</span></div>
       <div class="cols2">
-        <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
-        <div class="panel tablewrap sig"><table><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
+        <div class="panel tablewrap sig"><table class="cen"><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigL"></tbody></table></div>
+        <div class="panel tablewrap sig"><table class="cen"><thead><tr><th>代號</th><th class="r">收市</th><th class="r">變動 %</th><th class="r">成交</th><th>訊號</th></tr></thead><tbody id="sigR"></tbody></table></div>
       </div>
     </section>
   </main>
@@ -526,7 +528,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
       <div class="panel wlsum" id="wl-sum" role="status"></div>
       <div class="wllists" id="wl-lists"></div>
       <div class="controls" id="wl-filter"></div>
-      <div class="panel tablewrap wl"><table>
+      <div class="panel tablewrap wl"><table class="cen">
         <thead><tr><th class="frz">代號</th><th id="wl-lh">清單</th><th>狀態</th><th class="r">收市</th><th class="r">今日 %</th><th class="r">RS</th><th class="r">距 50 日線 %</th><th>趨勢</th><th>KC 條件</th><th>下次業績（美東）</th><th>今日變化</th><th>筆記</th><th>加入</th></tr></thead>
         <tbody id="wlbody"></tbody></table></div>
       <p class="note">喺選股器、機會頁或者個股頁撳 ☆ 就加入；有幾個清單嘅話會問你加入邊個（一隻股可以喺幾個清單）。撳「＋ 新增清單」開新清單，例如「長線」、「短炒」。筆記打完撳 Enter 或者撳出去就自動儲存。登入 Gmail 後會儲喺你個帳戶，換機都睇到；未登入就儲喺呢部機嘅瀏覽器。</p>
@@ -584,7 +586,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
       </div>
       <div class="panel tablewrap cmp" id="cmp" hidden></div>
       <div class="panel tablewrap" style="padding:6px 0">
-        <table id="stocktable">
+        <table id="stocktable" class="cen">
           <thead><tr id="stockhead"></tr></thead>
           <tbody id="stockbody"></tbody>
         </table>
@@ -1723,13 +1725,13 @@ function pmEarn(b){
   const nm=s=>BY[s]?tk(BY[s]):`<span class="num">${s}</span>`;
   return `<div class="controls" id="pm-scope">${[['ndx','Nasdaq-100'],['wl','自選'],['all','全部（市值 100 億美元以上先有 EPS）']].map(([k,l])=>`<button class="tog" data-k="${k}" aria-pressed="${k===pmScope}">${l}</button>`).join('')}</div>
   <div class="cols2" style="align-items:start">
-    <div class="panel tablewrap"><h3>已出業績 <span class="muted small">隔晚盤後同今早盤前</span></h3><table><thead><tr><th>代號</th><th>時間</th><th class="r">EPS 實際</th><th class="r">預期</th><th class="r">差距</th><th class="r">延長時段</th></tr></thead><tbody>${done.map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${e.d.slice(5)} ${ETIME[e.tm]||''}</td><td class="r num">${f(e.rep)}</td><td class="r num">${f(e.est)}</td><td class="r num ${cls(e.sur)}">${e.sur==null?'—':sgn(e.sur,1)+'%'}</td><td class="r num">${mv(e.s)}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">冇（或者數據源未更新）</td></tr>'}</tbody></table></div>
-    <div class="panel tablewrap"><h3>今日出業績 <span class="muted small">${today.length} 隻</span></h3><table><thead><tr><th>代號</th><th>時間</th><th>公司</th><th class="r">EPS 預期</th></tr></thead><tbody>${today.sort((a,b)=>((ETORD[a.tm]??2)-(ETORD[b.tm]??2))).map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${ETIME[e.tm]||'未公佈'}</td><td class="small">${esc(e.n||'')}</td><td class="r num">${e.est==null?'—':f(e.est)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">冇</td></tr>'}</tbody></table></div>
+    <div class="panel tablewrap"><h3>已出業績 <span class="muted small">隔晚盤後同今早盤前</span></h3><table class="cen"><thead><tr><th>代號</th><th>時間</th><th class="r">EPS 實際</th><th class="r">預期</th><th class="r">差距</th><th class="r">延長時段</th></tr></thead><tbody>${done.map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${e.d.slice(5)} ${ETIME[e.tm]||''}</td><td class="r num">${f(e.rep)}</td><td class="r num">${f(e.est)}</td><td class="r num ${cls(e.sur)}">${e.sur==null?'—':sgn(e.sur,1)+'%'}</td><td class="r num">${mv(e.s)}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">冇（或者數據源未更新）</td></tr>'}</tbody></table></div>
+    <div class="panel tablewrap"><h3>今日出業績 <span class="muted small">${today.length} 隻</span></h3><table class="cen"><thead><tr><th>代號</th><th>時間</th><th>公司</th><th class="r">EPS 預期</th></tr></thead><tbody>${today.sort((a,b)=>((ETORD[a.tm]??2)-(ETORD[b.tm]??2))).map(e=>`<tr><td>${nm(e.s)}</td><td class="small">${ETIME[e.tm]||'未公佈'}</td><td class="small">${esc(e.n||'')}</td><td class="r num">${e.est==null?'—':f(e.est)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">冇</td></tr>'}</tbody></table></div>
   </div>`;
 }
 function pmMovers(b){
   const M=b.movers||{}, rows=Object.entries(M).map(([s,m])=>({s,...m})).filter(x=>x.pct!=null);
-  const list=(t,xs)=>`<div class="panel tablewrap"><h3>${t}</h3><table><thead><tr><th>代號</th><th class="r">昨日收市</th><th class="r">最新</th><th class="r">變動</th><th>時間（香港）</th></tr></thead><tbody>${xs.map(x=>`<tr><td>${BY[x.s]?tk(BY[x.s]):x.s}</td><td class="r num">${f(x.c)}</td><td class="r num">${f(x.v)}</td><td class="r num ${cls(x.pct)}">${sgn(x.pct,2)}%</td><td class="small">${x.when==='pre'?'盤前':'盤後'} ${hkFmt(x.t)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">冇數據</td></tr>'}</tbody></table></div>`;
+  const list=(t,xs)=>`<div class="panel tablewrap"><h3>${t}</h3><table class="cen"><thead><tr><th>代號</th><th class="r">昨日收市</th><th class="r">最新</th><th class="r">變動</th><th>時間（香港）</th></tr></thead><tbody>${xs.map(x=>`<tr><td>${BY[x.s]?tk(BY[x.s]):x.s}</td><td class="r num">${f(x.c)}</td><td class="r num">${f(x.v)}</td><td class="r num ${cls(x.pct)}">${sgn(x.pct,2)}%</td><td class="small">${x.when==='pre'?'盤前':'盤後'} ${hkFmt(x.t)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">冇數據</td></tr>'}</tbody></table></div>`;
   const nd=rows.filter(x=>BY[x.s]&&BY[x.s].ndx).sort((a,b)=>b.pct-a.pct), wl=rows.filter(x=>WL.has(x.s)).sort((a,b)=>b.pct-a.pct);
   const miss=[...WL.keys()].filter(t=>!M[t]);
   return `<div class="cols2" style="align-items:start">${list('Nasdaq-100 升得最多',nd.slice(0,8))}${list('Nasdaq-100 跌得最多',nd.slice(-8).reverse())}</div>
@@ -1801,7 +1803,7 @@ async function hxShow(d){
     </div>
     <div class="panel" style="margin-top:14px"><h3>符合 KC 條件 <span class="muted small">${x.kc.length} 隻</span></h3>
       <p class="small"><b>新入選：</b>${x.kc_in.map(tkx).join('、')||'冇'}<br><b>跌出：</b>${x.kc_out.map(tkx).join('、')||'冇'}</p>
-      ${x.kc.length?`<div class="tablewrap"><table id="hx-kc"><thead><tr><th>代號</th><th>公司</th><th class="r">收市</th><th class="r">當日 %</th><th class="r">RS</th><th class="r">距 50 日線 %</th><th>趨勢</th><th>行業</th><th>當時下次業績</th></tr></thead><tbody>${x.kc.map(([t,nm,c,chg,rs,d50,tt,_m,sec,ed])=>`<tr><td>${tkx(t)}</td><td class="small">${esc(nm||'')}</td><td class="r num">${f(c)}</td>${pcell(chg,2)}<td class="r"><span class="rs" style="color:${rsColor(rs)}">${rs}</span></td>${pcell(d50)}<td>${ttbar(tt)}</td><td class="small">${ZH[sec]||sec||'—'}</td><td class="num small">${ed?ed.slice(5):'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${x.kc.length?`<div class="tablewrap"><table id="hx-kc" class="cen"><thead><tr><th>代號</th><th>公司</th><th class="r">收市</th><th class="r">當日 %</th><th class="r">RS</th><th class="r">距 50 日線 %</th><th>趨勢</th><th>行業</th><th>當時下次業績</th></tr></thead><tbody>${x.kc.map(([t,nm,c,chg,rs,d50,tt,_m,sec,ed])=>`<tr><td>${tkx(t)}</td><td class="small">${esc(nm||'')}</td><td class="r num">${f(c)}</td>${pcell(chg,2)}<td class="r"><span class="rs" style="color:${rsColor(rs)}">${rs}</span></td>${pcell(d50)}<td>${ttbar(tt)}</td><td class="small">${ZH[sec]||sec||'—'}</td><td class="num small">${ed?ed.slice(5):'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
       ${x.kc.length>30?`<button class="tog" id="hx-more">顯示全部 ${x.kc.length} 隻</button>`:''}
       <p class="muted small">KC 條件同選股器預設一樣，按 RS 排。價格係當日收市價，唔係今日價。</p></div>`;
   const rs=[...document.querySelectorAll('#hx-kc tbody tr')]; rs.slice(30).forEach(r=>r.hidden=true);
@@ -1881,7 +1883,7 @@ function earnings(){
   const days={}; rows.forEach(s=>(days[s.edate]=days[s.edate]||[]).push(s));
   $('earnlist').innerHTML = Object.keys(days).sort().map(d=>{
     const dd=new Date(d+'T12:00:00'), list=days[d].sort((a,b)=>((ETORD[a.etime]??2)-(ETORD[b.etime]??2))||(b.mcap||0)-(a.mcap||0));
-    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table><thead><tr><th class="frz">代號</th><th>時間</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r" title="GAAP，最近一季對去年同季">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td class="frz">${tk(s)}</td><td class="small" style="white-space:nowrap">${ETIME[s.etime]||'<span class="muted">未公佈</span>'}</td><td class="small cname" title="${esc(s.n||'')}">${esc(shortN(s.n))}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${epsCell(s)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+    return `<div class="panel eday"><h3><span class="num">${d.slice(5)}</span><span class="muted small">星期${WD[dd.getDay()]} · ${list.length} 隻</span></h3><div class="tablewrap"><table class="cen"><thead><tr><th class="frz">代號</th><th>時間</th><th>公司</th><th class="r">收市</th><th class="r">RS</th><th>趨勢</th><th class="r">營收增長 %</th><th class="r" title="GAAP，最近一季對去年同季">EPS 增長 %</th><th class="r">市值 (億)</th></tr></thead><tbody>${list.map(s=>`<tr><td class="frz">${tk(s)}</td><td class="small" style="white-space:nowrap">${ETIME[s.etime]||'<span class="muted">未公佈</span>'}</td><td class="small cname" title="${esc(s.n||'')}">${esc(shortN(s.n))}</td><td class="r num">${f(s.c)}</td><td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td><td>${ttbar(s.tt)}</td>${pcell(s.sq)}${epsCell(s)}<td class="r num">${s.mcap!=null?f(s.mcap*10,0):'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
   }).join('') || '<div class="panel muted">未來兩星期冇呢組股票出業績。</div>';
 }
 DRAW.earnings = () => {
@@ -2135,7 +2137,7 @@ function drawPeers(s){ const box=$('s-peers');
   const L=PEER_ALL?P:P.slice(0,10); if(!PEER_ALL&&!L.includes(s)) L.push(s);
   box.innerHTML=`<div class="sechead"><h3 id="h-peers">同業 <span class="muted small">${esc(s.ind)} · ${P.length} 隻 · 按市值排</span></h3>
       <button class="tog" id="peer-scr" type="button">喺選股器篩選呢個行業</button></div>
-    <div class="tablewrap"><table><thead><tr><th class="frz">代號</th><th class="r">收市</th><th class="r">今日 %</th><th class="r">RS</th><th class="r">3 個月 %</th><th class="r" title="GAAP，最近一季按年">EPS 增長 %</th><th class="r">市值 (億)</th><th>趨勢</th></tr></thead>
+    <div class="tablewrap"><table class="cen"><thead><tr><th class="frz">代號</th><th class="r">收市</th><th class="r">今日 %</th><th class="r">RS</th><th class="r">3 個月 %</th><th class="r" title="GAAP，最近一季按年">EPS 增長 %</th><th class="r">市值 (億)</th><th>趨勢</th></tr></thead>
     <tbody>${L.map(x=>`<tr${x===s?' class="me"':''}><td class="frz"><span style="white-space:nowrap">${star(x.s)}${tk(x)}</span><div class="muted small" title="${esc(x.n||'')}">${esc(shortN(x.n))}</div></td>
       <td class="r num">${f(x.c)}</td>${pcell(x.chg,2)}<td class="r"><span class="rs" style="color:${rsColor(x.rsr)}">${x.rsr}</span></td>${pcell(x.r63)}${epsCell(x)}<td class="r num">${x.mcap!=null?f(x.mcap*10,0):'—'}</td><td>${ttbar(x.tt)}</td></tr>`).join('')}</tbody></table></div>
     ${P.length>10?`<button class="tog" id="peer-more" type="button">${PEER_ALL?'只顯示頭 10 隻':`顯示全部 ${P.length} 隻`}</button>`:''}`;
