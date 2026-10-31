@@ -1307,7 +1307,7 @@ function drawChips(){chips(FA,'chipsA');chips(FB,'chipsB');
 const tdn=(x,d=1)=>`<td class="r num">${x==null?'<span class="muted">—</span>':f(x,d)}</td>`;
 const COLS=[
   ['sec','板塊',1,s=>`<td class="small nowrap">${secZh(s)}</td>`,secZh,'Sector（Yahoo Finance）'],
-  ['ind','細分行業',1,s=>`<td class="small">${s.ind?`<button class="linkbtn indf" data-ind="${esc(s.ind)}" title="只睇呢個細分行業">${esc(s.ind)}</button>`:'<span class="muted">未知</span>'}</td>`,indTxt,'Industry（Yahoo Finance）；撳行業名就只睇呢個行業'],
+  ['ind','細分行業',1,s=>`<td class="small nowrap">${s.ind?`<button class="linkbtn indf" data-ind="${esc(s.ind)}" title="只睇呢個細分行業">${esc(s.ind)}</button>`:'<span class="muted">未知</span>'}</td>`,indTxt,'Industry（Yahoo Finance）；撳行業名就只睇呢個行業'],
   ['c','收市',1,s=>tdn(s.c,2),s=>s.c],
   ['chg','今日 %',1,s=>pcell(s.chg,2),s=>s.chg],
   ['rsr','RS',1,s=>`<td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td>`,s=>s.rsr,'相對強度排名 1–99，計法見下面「指標計法說明」'],
@@ -1345,7 +1345,7 @@ if(!Store.get('colind',0)){ if(SHOW.has('sec')&&!SHOW.has('ind')){SHOW.add('ind'
 const CMP=new Set();
 let SCR_ROWS=[];
 function drawHead(){
-  $('stockhead').innerHTML=`<th class="frz"><button data-k="s">代號</button></th>`+COLS.filter(c=>SHOW.has(c[0])).map(c=>`<th class="${['mvp','tt','edate'].includes(c[0])?'':'r'}"><button data-k="${c[0]}"${c[5]?` title="${c[5]}"`:''}>${c[1]}</button></th>`).join('');
+  $('stockhead').innerHTML=`<th class="frz"><button data-k="s">代號</button></th>`+COLS.filter(c=>SHOW.has(c[0])).map(c=>`<th class="${['mvp','tt','edate','sec','ind'].includes(c[0])?'':'r'}"><button data-k="${c[0]}"${c[5]?` title="${c[5]}"`:''}>${c[1]}</button></th>`).join('');
   document.querySelectorAll('#stocktable th button').forEach(b=>{
     if(b.dataset.k===sortK){b.dataset.active='true'; b.textContent+=sortDir<0?' ▾':' ▴'}
     b.onclick=()=>{const k=b.dataset.k; if(sortK===k)sortDir*=-1; else {sortK=k;sortDir=(k==='s'||k==='edate')?1:-1} drawHead(); renderStocks()}});
