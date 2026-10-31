@@ -359,27 +359,36 @@ def nasdaq_quarters(tickers, cache_file, max_age_days=7, max_calls=400, workers=
 EARN_TIME = {"time-pre-market": "bmo", "time-after-hours": "amc"}
 
 
-def earnings_calendar(days=15):
-    """{ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days."""
-    out = {}
+def _earn_rows(day):
+    try:
+        r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}", headers=NASDAQ_UA, timeout=30)
+        return ((r.json().get("data") or {}).get("rows")) or []
+    except Exception as e:
+        print("earnings calendar failed:", day, e)
+        return []
+    finally:
+        time.sleep(0.5)
+
+
+def earnings_calendar(days=15, back=10):
+    """({ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days,
+    {ticker: date} of reports in the last `back` days that came with an actual EPS, i.e. confirmed as published)."""
+    out, done = {}, {}
     start = pd.Timestamp.now(tz="America/New_York").normalize()
-    for d in pd.date_range(start, periods=days):
+    for d in pd.date_range(start - pd.Timedelta(days=back), periods=back + days):
         if d.weekday() >= 5:
             continue
         day = d.strftime("%Y-%m-%d")
-        try:
-            r = requests.get(f"https://api.nasdaq.com/api/calendar/earnings?date={day}", headers=NASDAQ_UA, timeout=30)
-            rows = ((r.json().get("data") or {}).get("rows")) or []
-        except Exception as e:
-            print("earnings calendar failed:", day, e)
-            continue
-        for row in rows:
+        for row in _earn_rows(day):
             sym = (row.get("symbol") or "").strip().replace(".", "-")
-            if sym and sym not in out:
+            if not sym:
+                continue
+            if d >= start and sym not in out:
                 out[sym] = [day, EARN_TIME.get(row.get("time"))]
-        time.sleep(0.5)
-    print(f"earnings calendar: {len(out)} companies in the next {days} days")
-    return out
+            elif d < start and re.search(r"\d", str(row.get("eps") or "")):  # "$1.23", "($0.12)"; blank until published
+                done[sym] = max(done.get(sym, day), day)
+    print(f"earnings calendar: {len(out)} companies in the next {days} days, {len(done)} reported in the last {back}")
+    return out, done
 
 
 # ---- US economic calendar and market headlines (Nasdaq) ----
