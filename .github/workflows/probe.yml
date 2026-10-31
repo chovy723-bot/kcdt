@@ -23,6 +23,12 @@ jobs:
           out = dict(built=d.get("built"), asof=d["asof"], n=len(st), ind=sum(1 for s in st if s.get("ind")),
                      eqv=sum(1 for s in st if s.get("eqv")), eqd=sum(1 for s in st if s.get("eqv") and s.get("eqd")),
                      eold=sum(1 for s in st if s.get("eold")), checks=d.get("checks"))
+          from collections import Counter
+          f = [s for s in st if s.get("fts")]
+          out["fts"] = sorted(Counter(s["fts"] for s in f).items())[-8:]
+          out["qend"] = sum(1 for s in f if s.get("qend"))
+          out["by_fts"] = {k: [sum(1 for s in f if s["fts"] == k), sum(1 for s in f if s["fts"] == k and s.get("qend")),
+                               sum(1 for s in f if s["fts"] == k and s.get("eqd"))] for k, _ in out["fts"]}
           json.dump(out, open("shots/summary.json", "w"), ensure_ascii=False, indent=1)
           print(json.dumps(out, ensure_ascii=False)[:3000])
           PY
@@ -34,7 +40,7 @@ jobs:
                   pg = b.new_page(viewport={"width": w, "height": h})
                   errs = []
                   pg.on("pageerror", lambda e: errs.append(str(e)))
-                  for v in ["screener", "earnings"]:
+                  for v in []:
                       pg.goto(f"https://kcxdt.github.io/?v=17#{v}"); pg.wait_for_timeout(4000)
                       if v == "screener":
                           pg.evaluate("document.querySelector('#stocktable').scrollIntoView()")
