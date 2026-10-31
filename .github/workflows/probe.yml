@@ -9,76 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: claude/earnings-lookback
+          ref: main
+          path: app
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt playwright && python -m playwright install --with-deps chromium
+      - run: pip install -r app/requirements.txt
       - uses: actions/cache/restore@v4
         with:
-          path: cache
+          path: app/cache
           key: fundamentals-latest
           restore-keys: fundamentals-
-      - name: Dates for Nasdaq EPS history, before the build
-        run: |
-          mkdir -p shots
-          python - <<'PY' > shots/before.txt
-          import json
-          from kcdt.compute import fundamentals_row, nasdaq_qend
-          f = {**json.load(open("cache/fundamentals.json"))}
-          nq = json.load(open("cache/nasdaq_quarters.json")) if __import__("os").path.exists("cache/nasdaq_quarters.json") else {}
-          f = {t: {**r, **nq.get(t, {})} for t, r in f.items()}
-          rows = {t: fundamentals_row(r) for t, r in f.items()}
-          eq = [t for t, r in rows.items() if r.get("eqv")]
-          dated = [t for t in eq if rows[t].get("eqd")]
-          print("cached", len(f), "with EPS yoy", len(eq), "dated", len(dated))
-          print("ind in fundamentals cache", sum(1 for r in f.values() if r.get("ind")))
-          miss = [t for t in eq if not rows[t].get("eqd")]
-          for t in miss[:25]:
-              r = f[t]
-              print("undated", t, r.get("qend"), (r.get("revq") or [])[:2], (r.get("nrev") or [])[:1], (r.get("epsq") or [])[:2], (r.get("neps") or [])[:1])
-          PY
-          cat shots/before.txt
-      - run: mkdir -p hist && python -m kcdt
-        env:
-          KCDT_HISTORY: hist
-      - name: Summary and screenshots
-        run: |
-          python - <<'PY'
-          import json
-          d = json.load(open("site/data.json"))
-          st = d["stocks"]
-          by = {s["s"]: s for s in st}
-          keep = ("s", "n", "sec", "ind", "eq", "eqa", "eqv", "eqd", "ew", "erep", "edate", "eold", "fts")
-          out = dict(asof=d["asof"], n=len(st), ind=sum(1 for s in st if s.get("ind")),
-                     eqv=sum(1 for s in st if s.get("eqv")), eqd=sum(1 for s in st if s.get("eqv") and s.get("eqd")),
-                     nind=len({s["ind"] for s in st if s.get("ind")}), sec=sum(1 for s in st if s.get("sec")),
-                     eold=sum(1 for s in st if s.get("eold")), checks=d.get("checks"),
-                     sample={t: {k: by[t].get(k) for k in keep} for t in ("AAPL", "RNG", "NVDA", "META", "AAL", "AAON", "AAT") if t in by},
-                     noind=[s["s"] for s in st if not s.get("ind")][:60])
-          json.dump(out, open("shots/summary.json", "w"), ensure_ascii=False, indent=1)
-          print(json.dumps({k: v for k, v in out.items() if k != "sample"}, ensure_ascii=False)[:3000])
-          PY
-          (cd site && python -m http.server 8765 >/dev/null 2>&1 &) ; sleep 2
-          cat > shot.py <<'PY'
-          from playwright.sync_api import sync_playwright
-          with sync_playwright() as p:
-              b = p.chromium.launch()
-              for tag, w, h in [("d", 1440, 900), ("m", 390, 844)]:
-                  pg = b.new_page(viewport={"width": w, "height": h})
-                  errs = []
-                  pg.on("pageerror", lambda e: errs.append(str(e)))
-                  for v in ["screener", "s/AAL", "s/RNG", "about"]:
-                      pg.goto(f"http://localhost:8765/#{v}"); pg.wait_for_timeout(3000)
-                      pg.screenshot(path=f"shots/{tag}-{v.replace('/', '_')}.png", full_page=v != "screener")
-                  print(tag, "errors", errs)
-              b.close()
-          PY
-          python shot.py
+      - run: mkdir -p shots && python tools/edgar_test.py
       - name: Save to branch
+        if: always()
         run: |
           git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan claude/probe-shots
-          git rm -rq --cached . ; git add shots ; git commit -qm "probe shots"
+          git rm -rq --cached . ; git add shots ; git commit -qm "edgar test"
           git push -f origin claude/probe-shots
