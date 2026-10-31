@@ -9,6 +9,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from .checks import coverage
+
 DOW30 = ["AAPL", "AMGN", "AMZN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS",
          "GS", "HD", "HON", "IBM", "JNJ", "JPM", "KO", "MCD", "MMM", "MRK",
          "MSFT", "NKE", "NVDA", "PG", "SHW", "TRV", "UNH", "V", "VZ", "WMT"]
@@ -94,6 +96,35 @@ def _growth(new, old):
     return (new / abs(old) - 1) * 100
 
 
+def eps_yoy(gaap, adj, qend=None):
+    """Latest quarter's EPS against the same quarter a year earlier (lists newest first).
+
+    eq: GAAP EPS growth % (reported accounts); eqa: adjusted EPS growth % (what companies and analysts compare);
+    eqv: [latest, year-ago] GAAP EPS; eqd: [latest quarter end, year-ago quarter end];
+    ew: reasons the percentage can mislead: turn (loss to profit), loss (still a loss), base (year-ago EPS
+    near zero, so the % is huge), gap (GAAP and adjusted EPS far apart: one-off items)."""
+    pair = lambda xs: (xs[0], xs[4]) if len(xs) >= 5 and None not in (xs[0], xs[4]) else (None, None)
+    new, old = pair(gaap or [])
+    anew, aold = pair(adj or [])
+    ew = []
+    if new is not None:
+        if old <= 0 < new:
+            ew.append("turn")
+        elif new < 0:
+            ew.append("loss")
+        if old > 0 and (old < 0.05 or new / old > 4):
+            ew.append("base")
+    a0 = (adj or [None])[0]
+    if new is not None and a0 is not None and abs(new - a0) > max(0.05, 0.3 * abs(a0)):
+        ew.append("gap")
+    out = dict(eq=_f(_growth(new, old), 1), eqa=_f(_growth(anew, aold), 1),
+               eqv=[_f(new), _f(old)] if new is not None else None, ew=ew or None)
+    if qend and new is not None:
+        q = pd.Timestamp(qend)
+        out["eqd"] = [q.strftime("%Y-%m"), (q - pd.DateOffset(years=1)).strftime("%Y-%m")]
+    return out
+
+
 def fundamentals_row(f):
     """Derived fundamental fields from one cached Yahoo record."""
     if not f:
@@ -109,7 +140,11 @@ def fundamentals_row(f):
     # Nasdaq's quarterly history goes back ~3 fiscal years; Yahoo's is the fallback
     nrev, neps, epsh = f.get("nrev") or [], f.get("neps") or [], f.get("epsh") or []
     g3r = yoy3(nrev) if len(nrev) >= 7 else yoy3(revq)
-    g3e = next((g for g in (yoy3(neps), yoy3(epsh), yoy3(epsq)) if g is not None), None)
+    # GAAP EPS (company accounts: Nasdaq, then Yahoo's income statement) before Yahoo's adjusted reported EPS
+    g3e, g3eb = next(((g, b) for g, b in ((yoy3(neps), "g"), (yoy3(epsq), "g"), (yoy3(epsh), "a")) if g is not None),
+                     (None, None))
+    yq = len(epsq) >= 5 and None not in (epsq[0], epsq[4])  # Yahoo's statement comes with its quarter end date
+    eps = eps_yoy(epsq if yq else neps, epsh, f.get("qend") if yq else None)
     rising = lambda xs: len(xs) >= 3 and None not in xs[:3] and xs[0] > xs[1] > xs[2]
     efc, rfc = f.get("efc") or [None, None], f.get("rfc") or [None, None]
     pct = lambda x: None if x is None else x * 100
@@ -122,18 +157,19 @@ def fundamentals_row(f):
         mcap=_f((f.get("mcap") or 0) / 1e9, 2) if f.get("mcap") else None,  # US$ billions
         beta=_f(f.get("beta")), inst=_f((f["inst"] * 100) if f.get("inst") is not None else None, 1),
         sq=_f((f["sq"] * 100) if f.get("sq") is not None else None, 1),
-        eq=_f((f["eq"] * 100) if f.get("eq") is not None else None, 1),
+        ni=_f((f["eq"] * 100) if f.get("eq") is not None else None, 1),  # Yahoo's earningsQuarterlyGrowth is net income
+        **eps,
         sa=_f(_growth(reva[0], reva[1]) if len(reva) >= 2 else None, 1),
         pe=_f(f.get("pe"), 1), fpe=_f(f.get("fpe"), 1),
         rev3=up3(rev_seq), eps3=up3(eps_seq),
-        g3r=_f(g3r, 1), g3e=_f(g3e, 1),
+        g3r=_f(g3r, 1), g3e=_f(g3e, 1), g3eb=g3eb,
         yr=rising(reva) and rising(f.get("epsa") or []) if f.get("epsa") else None,
         e0=_f(pct(efc[0]), 1), e1=_f(pct(efc[1]), 1), r0=_f(pct(rfc[0]), 1), r1=_f(pct(rfc[1]), 1),
         ipo=_f(ipo_years, 1), edate=edate, ind=f.get("ind"), qend=f.get("qend"), erep=day(f.get("erep")),
     )
 
 
-def build(px, meta, fund=None, fng=None, earn=None):
+def build(px, meta, fund=None, fng=None, earn=None, done=None):
     """px: dict of OHLCV DataFrames. meta: DataFrame indexed by ticker with n, gics, ndx, sp500...
     fund: {ticker: cached Yahoo record}."""
     fund = fund or {}
@@ -203,8 +239,16 @@ def build(px, meta, fund=None, fng=None, earn=None):
         if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market
             row["edate"], row["etime"] = earn[t]
             row["econf"] = True  # on Nasdaq's dated calendar; Yahoo-only dates are estimates
-        if row.get("edate") and row["edate"] < asof:  # an expected date that has passed: may or may not have reported
-            row["eold"], row["edate"], row["etime"] = row["edate"], None, None
+        if done and t in done and done[t] > (row.get("erep") or ""):  # on Nasdaq's calendar with an actual EPS
+            row["erep"] = done[t]
+        if row.get("edate") and row["edate"] < asof:
+            # an expected date that has passed: the next one is unknown; keep the old date only while no report
+            # on or after it (within a few days' slip) is confirmed
+            was = row["edate"]
+            row["edate"], row["etime"] = None, None
+            row.pop("econf", None)
+            if not row.get("erep") or row["erep"] < (pd.Timestamp(was) - pd.Timedelta(days=3)).strftime("%Y-%m-%d"):
+                row["eold"] = was
         stocks.append(row)
 
     # ---- breadth: all stocks and Nasdaq-100 only ----
@@ -263,7 +307,7 @@ def build(px, meta, fund=None, fng=None, earn=None):
         spx=dict(close=[round(float(x)) for x in close["^GSPC"].dropna().tail(252)]),
         rules=[dict(k=k, n=n, y=y, r=r, side=s, u=u) for k, n, y, r, s, u in RULES],
         sector_zh=SECTOR_ZH, nuniv=len(stocks), fng=fng, leaders=[t for t in DOW30 if t in close],
-        nfund=sum(1 for s in stocks if s.get("mcap") is not None))
+        nfund=sum(1 for s in stocks if s.get("mcap") is not None), fcov=list(coverage(stocks)))
 
 
 def _rs_rank(c, i):

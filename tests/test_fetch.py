@@ -111,3 +111,25 @@ if __name__ == "__main__":
     test_nasdaq_time_is_utc_minus_4_all_year()
     test_reported_since()
     print("ok")
+
+
+def test_earnings_calendar_splits_upcoming_and_reported():
+    today = fetch.pd.Timestamp.now(tz="America/New_York").normalize()
+    past = next(d for d in fetch.pd.date_range(end=today - fetch.pd.Timedelta(days=1), periods=7)[::-1] if d.weekday() < 5)
+    nxt = next(d for d in fetch.pd.date_range(today, periods=7) if d.weekday() < 5)
+    rows = {past.strftime("%Y-%m-%d"): [{"symbol": "RNG", "time": "time-after-hours", "eps": "$0.23"},
+                                        {"symbol": "LATE", "time": "time-pre-market", "eps": ""},
+                                        {"symbol": "LOSS", "time": "time-pre-market", "eps": "($0.12)"}],
+            nxt.strftime("%Y-%m-%d"): [{"symbol": "BRK.B", "time": "time-pre-market", "eps": ""}]}
+
+    def fake_get(url, **kw):
+        return _Resp(rows.get(url.rsplit("=", 1)[1], []))
+
+    real_get, real_sleep = fetch.requests.get, fetch.time.sleep
+    fetch.requests.get, fetch.time.sleep = fake_get, lambda s: None
+    try:
+        out, done = fetch.earnings_calendar()
+    finally:
+        fetch.requests.get, fetch.time.sleep = real_get, real_sleep
+    assert out == {"BRK-B": [nxt.strftime("%Y-%m-%d"), "bmo"]}
+    assert done == {"RNG": past.strftime("%Y-%m-%d"), "LOSS": past.strftime("%Y-%m-%d")}  # no EPS yet = not confirmed

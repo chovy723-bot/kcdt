@@ -5,6 +5,7 @@ import pathlib
 import sys
 from datetime import datetime, timezone
 
+from .checks import run as run_checks
 from .compute import build, stock_pages, wants_fundamentals
 from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_prices, fundamentals, headlines,
                     nasdaq_quarters, universe)
@@ -98,12 +99,16 @@ def main():
                          reports={t: r["erep"] for t, r in fund.items() if r.get("erep")})
     fund = {t: {**rec, **nq.get(t, {}), "_ts": max(rec.get("_ts", 0), nq.get(t, {}).get("_ts", 0))}
             for t, rec in fund.items()}
-    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earnings_calendar())
+    earn, done = earnings_calendar()
+    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earn, done)
     data["econ"], data["econ_t"] = economic_calendar(labels_file="cache/econ_labels.json"), now_utc()
     data["news"], data["news_t"] = headlines(), now_utc()
     if len(data["stocks"]) < 1000:
         sys.exit(f"only {len(data['stocks'])} stocks computed, refusing to publish")
     data["built"] = now_utc()
+    data["checks"] = run_checks(data)
+    for c in data["checks"]:
+        print("check:", "ok" if c["lv"] == 0 else "LOOK" if c["lv"] == 1 else "PROBLEM", c["t"])
     OUT.mkdir(exist_ok=True)
     data["pm_t"] = keep_history(data, os.environ.get("KCDT_HISTORY", ROOT / "hist"))
     (OUT / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")

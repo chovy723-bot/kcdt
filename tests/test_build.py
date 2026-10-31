@@ -36,7 +36,8 @@ def fake_meta(universe):
 def fake_fund(tickers, seed=2):
     rng = np.random.default_rng(seed)
     out = {}
-    for t in tickers:
+    inds = ["Semiconductors", "Software - Application", "Banks - Regional", None, "Semiconductors", "Biotechnology"]
+    for i, t in enumerate(tickers):
         rev = sorted(rng.uniform(1e8, 1e10, 8).tolist(), reverse=bool(rng.integers(0, 2)))
         out[t] = dict(mcap=float(rng.uniform(3e8, 3e12)), beta=float(rng.uniform(0.3, 2.5)),
                       inst=float(rng.uniform(0, 1)), sq=float(rng.uniform(-0.2, 0.8)),
@@ -44,8 +45,23 @@ def fake_fund(tickers, seed=2):
                       ipo=1.2e12, edate=1.8e9, revq=rev, epsq=[1.5, 1.2, 1.0, 0.8, 0.7], reva=[5e9, 4e9, 3e9],
                       epsa=[4.0, 3.0, 2.5], epsh=[1.5, 1.2, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4],
                       efc=[0.3, 0.2], rfc=[0.25, None], _ts=1.7616e9,
-                      qend="2026-09-30", erep=1.7616e9 + 86400)
+                      qend="2026-09-30", erep=1.7616e9 + 86400, ind=inds[i % len(inds)])
+        # some EPS percentages that need a warning: loss to profit, tiny base, still a loss
+        eps = {3: [0.3, 0.2, 0.1, 0.0, -0.1], 4: [0.65, 0.4, 0.2, 0.1, 0.02], 5: [-0.2, -0.3, -0.4, -0.4, -0.5]}.get(i % 7)
+        if eps:
+            out[t].update(epsq=eps, epsh=[eps[0] + 0.2] + eps[1:] + [0.1, 0.1, 0.1])
     return out
+
+
+def test_eps_yoy():
+    from kcdt.compute import eps_yoy
+    r = eps_yoy([0.30, 0, 0, 0, -0.10], [0.45, 0, 0, 0, 0.05])  # loss a year ago -> profit; adjusted far from GAAP
+    assert r["ew"] == ["turn", "gap"] and r["eqv"] == [0.3, -0.1] and "eqd" not in r
+    r = eps_yoy([0.65, 0, 0, 0, 0.02], [0.66, 0, 0, 0, 0.30], "2026-06-30")  # tiny base: +3,150%
+    assert r["ew"] == ["base"] and r["eq"] == 3150.0 and r["eqa"] == 120.0 and r["eqd"] == ["2026-06", "2025-06"]
+    r = eps_yoy([-0.2, 0, 0, 0, -0.5], None)
+    assert r["ew"] == ["loss"] and r["eqa"] is None
+    assert eps_yoy([1.0, 0.9], [1.0])["eq"] is None
 
 
 def test_build():
@@ -62,7 +78,12 @@ def test_build():
     assert len(want) >= 100
     fng = dict(score=42.0, rating="fear", prev=40.1, w1=35.0, m1=55.2, y1=60.0, ts="2026-10-27",
                hist=[["2026-%02d-%02d" % (1 + i // 28, 1 + i % 28), 30 + (i * 7) % 50] for i in range(250)], live=True)
-    d = build(px, meta, fake_fund(want), fng, {"S0001": ["2026-10-29", "amc"]})
+    fund = fake_fund(want)
+    past = pd.Timestamp("2026-10-21").timestamp()
+    a, b = want[1], want[2]  # both were expected on 10-21; only b shows up on Nasdaq's calendar with an actual EPS
+    fund[a].update(edate=past, erep=past - 90 * 86400)
+    fund[b].update(edate=past, erep=past - 90 * 86400)
+    d = build(px, meta, fund, fng, {"S0001": ["2026-10-29", "amc"]}, {b: "2026-10-22"})
     assert d["asof"] == "2026-10-27"
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 1105
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
@@ -71,7 +92,7 @@ def test_build():
     assert len(d["minis"]) == 4 and len(d["minis"][0]["c"]) == 60
     ranks = [s["rsr"] for s in d["stocks"]]
     assert min(ranks) == 1 and max(ranks) == 99
-    f0 = next(s for s in d["stocks"] if s.get("mcap") is not None)
+    f0 = next(s for s in d["stocks"] if s["s"] == want[0])
     assert f0["g3e"] == 100.0 and f0["yr"] is True and f0["e0"] == 30.0 and f0["r1"] is None  # min of 1.5/0.7, 1.2/0.6, 1.0/0.5
     assert d["fng"]["score"] == 42.0
     s1 = next(s for s in d["stocks"] if s["s"] == "S0001")
@@ -81,6 +102,16 @@ def test_build():
     assert set(d["rebound"]) == {"on", "day", "ma20", "close"}
     assert all(1 <= s["prsr"] <= 99 and "pd50" in s and "px50" in s for s in d["stocks"])
     assert f0["fts"] and f0["qend"] == "2026-09-30" and f0["erep"] >= f0["fts"]  # reported after the last fetch
+    assert f0["eq"] == 114.3 and f0["eqa"] == 114.3 and f0["eqv"] == [1.5, 0.7] and f0["eqd"] == ["2026-09", "2025-09"]
+    assert f0["ew"] is None and f0["g3eb"] == "a" and f0["ni"] is not None and f0["ind"]
+    sa, sb = (next(s for s in d["stocks"] if s["s"] == t) for t in (a, b))
+    assert sa["eold"] == "2026-10-21" and sa["edate"] is None  # passed, not confirmed: next date unknown
+    assert "eold" not in sb and sb["erep"] == "2026-10-22" and sb["edate"] is None
+    assert d["fcov"][0] >= d["fcov"][1] > 0
+    from kcdt.checks import run
+    checks = run(d, today="2026-10-28")
+    assert checks and all(c["lv"] in (0, 1, 2) for c in checks)
+    assert not [c for c in checks if c["lv"] == 2], checks
     assert len(d["leaders"]) == 30 and set(d["leaders"]) <= set(DOW30)
     pages = stock_pages(px, d["stocks"])
     nv = pages[d["stocks"][0]["s"]]
@@ -110,6 +141,8 @@ if __name__ == "__main__":
                  dict(t="2026-10-28T08:00:00Z", title="MSFT Q1 2027 Earnings Call Transcript", link="https://example.com/b", src="Motley Fool", cat="Earnings"),
                  dict(t="2026-10-28T07:00:00Z", title="Chip stocks climb", link="https://example.com/c", src="Nasdaq", cat="Technology")]
     d["news_t"] = d["built"] = (now - dt.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%MZ")
+    from kcdt.checks import run as run_checks
+    d["checks"] = run_checks(d)
     m.OUT = pathlib.Path("site")
     m.OUT.mkdir(exist_ok=True)
     (m.OUT / "index.html").write_text(m.render(d), encoding="utf-8")
