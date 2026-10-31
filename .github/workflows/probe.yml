@@ -9,25 +9,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          path: app
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r app/requirements.txt
-      - uses: actions/cache/restore@v4
-        with:
-          path: cache
-          key: fundamentals-latest
-          restore-keys: fundamentals-
-      - run: ls cache && cp -r cache app/ && mkdir -p shots && python tools/edgar_test.py
+      - run: pip install requests playwright && python -m playwright install --with-deps chromium
+      - name: Live data summary and screenshots
+        run: |
+          mkdir -p shots
+          python - <<'PY'
+          import json, requests
+          d = requests.get("https://kcxdt.github.io/data.json", timeout=60).json()
+          st = d["stocks"]
+          out = dict(built=d.get("built"), asof=d["asof"], n=len(st), ind=sum(1 for s in st if s.get("ind")),
+                     eqv=sum(1 for s in st if s.get("eqv")), eqd=sum(1 for s in st if s.get("eqv") and s.get("eqd")),
+                     eold=sum(1 for s in st if s.get("eold")), checks=d.get("checks"))
+          json.dump(out, open("shots/summary.json", "w"), ensure_ascii=False, indent=1)
+          print(json.dumps(out, ensure_ascii=False)[:3000])
+          PY
+          cat > shot.py <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for tag, w, h in [("d", 1440, 1000), ("m", 390, 844)]:
+                  pg = b.new_page(viewport={"width": w, "height": h})
+                  errs = []
+                  pg.on("pageerror", lambda e: errs.append(str(e)))
+                  for v in ["screener", "earnings"]:
+                      pg.goto(f"https://kcxdt.github.io/?v=17#{v}"); pg.wait_for_timeout(4000)
+                      if v == "screener":
+                          pg.evaluate("document.querySelector('#stocktable').scrollIntoView()")
+                          pg.wait_for_timeout(500)
+                      pg.screenshot(path=f"shots/{tag}-{v}.png")
+                  print(tag, "errors", errs)
+              b.close()
+          PY
+          python shot.py
       - name: Save to branch
         if: always()
         run: |
           git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p shots; touch shots/.keep
           git checkout --orphan claude/probe-shots
-          git rm -rq --cached . ; git add shots ; git commit -qm "edgar test"
+          git rm -rq --cached . ; git add shots ; git commit -qm "live shots"
           git push -f origin claude/probe-shots
