@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from .checks import run as run_checks
 from .compute import build, stock_pages, wants_fundamentals
-from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_prices, fundamentals, headlines,
+from .fetch import (earnings_calendar, economic_calendar, fear_greed, fetch_prices, fundamentals, headlines, profiles,
                     nasdaq_quarters, universe)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -99,8 +99,9 @@ def main():
                          reports={t: r["erep"] for t, r in fund.items() if r.get("erep")})
     fund = {t: {**rec, **nq.get(t, {}), "_ts": max(rec.get("_ts", 0), nq.get(t, {}).get("_ts", 0))}
             for t, rec in fund.items()}
-    earn, done = earnings_calendar()
-    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earn, done)
+    prof = profiles(list(meta.index), ROOT / "cache" / "profiles.json", have={t for t, r in fund.items() if r.get("ind")})
+    earn, done = earnings_calendar(cache_file=ROOT / "cache" / "earnings_done.json")
+    data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earn, done, prof)
     data["econ"], data["econ_t"] = economic_calendar(labels_file="cache/econ_labels.json"), now_utc()
     data["news"], data["news_t"] = headlines(), now_utc()
     if len(data["stocks"]) < 1000:

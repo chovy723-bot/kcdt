@@ -287,6 +287,34 @@ def fundamentals(tickers, cache_file, max_age_days=7, max_calls=250, pause=0.6):
     return cache
 
 
+def profiles(tickers, cache_file, have=(), max_calls=450, max_age_days=180, pause=0.4):
+    """Yahoo sector and industry for stocks outside the fundamentals list (`have` already has them).
+    One cheap call each; these rarely change, so new tickers first and each kept for half a year."""
+    path = pathlib.Path(cache_file)
+    cache = json.loads(path.read_text()) if path.exists() else {}
+    now = time.time()
+    todo = sorted((t for t in tickers if t not in have and now - cache.get(t, {}).get("_ts", 0) > max_age_days * 86400),
+                  key=lambda t: cache.get(t, {}).get("_ts", 0))
+    done = fails = 0
+    for t in todo[:max_calls]:
+        try:
+            info = yf.Ticker(t).info or {}
+            cache[t] = {"ysec": info.get("sector"), "ind": info.get("industry"), "_ts": now}
+            done += 1
+        except Exception as e:
+            fails += 1
+            print("profile failed:", t, e)
+            if fails > 25:
+                print("too many failures, stopping profile refresh for this run")
+                break
+            time.sleep(pause * 10)
+        time.sleep(pause)
+    print(f"profiles: {done} fetched, {max(0, len(todo) - done)} still to do, {len(cache)} cached")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cache))
+    return cache
+
+
 # ---- quarterly revenue / EPS history from Nasdaq (Yahoo only gives ~5 quarters, too few for 3 quarters YoY) ----
 
 def _money(x):
@@ -370,15 +398,31 @@ def _earn_rows(day):
         time.sleep(0.5)
 
 
-def earnings_calendar(days=15, back=10):
+def earnings_calendar(days=15, back=100, cache_file=None):
     """({ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days,
-    {ticker: date} of reports in the last `back` days that came with an actual EPS, i.e. confirmed as published)."""
+    {ticker: date} of reports in the last `back` days that came with an actual EPS, i.e. confirmed as published).
+
+    Past days don't change once the numbers are in, so they are kept in `cache_file` ({date: [tickers]}) and only
+    the last few days are asked for again; the first run fills a whole quarter."""
     out, done = {}, {}
     start = pd.Timestamp.now(tz="America/New_York").normalize()
+    path = pathlib.Path(cache_file) if cache_file else None
+    seen = {}
+    if path and path.exists():
+        try:
+            seen = json.loads(path.read_text())
+        except Exception:
+            seen = {}
+    recent = (start - pd.Timedelta(days=4)).strftime("%Y-%m-%d")  # late EPS figures still arriving
     for d in pd.date_range(start - pd.Timedelta(days=back), periods=back + days):
         if d.weekday() >= 5:
             continue
         day = d.strftime("%Y-%m-%d")
+        if d < start and day in seen and day < recent:
+            for sym in seen[day]:
+                done[sym] = max(done.get(sym, day), day)
+            continue
+        got = []
         for row in _earn_rows(day):
             sym = (row.get("symbol") or "").strip().replace(".", "-")
             if not sym:
@@ -387,6 +431,13 @@ def earnings_calendar(days=15, back=10):
                 out[sym] = [day, EARN_TIME.get(row.get("time"))]
             elif d < start and re.search(r"\d", str(row.get("eps") or "")):  # "$1.23", "($0.12)"; blank until published
                 done[sym] = max(done.get(sym, day), day)
+                got.append(sym)
+        if d < start:
+            seen[day] = got
+    if path:
+        first = (start - pd.Timedelta(days=back + 10)).strftime("%Y-%m-%d")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({k: v for k, v in sorted(seen.items()) if k >= first}))
     print(f"earnings calendar: {len(out)} companies in the next {days} days, {len(done)} reported in the last {back}")
     return out, done
 

@@ -128,8 +128,36 @@ def test_earnings_calendar_splits_upcoming_and_reported():
     real_get, real_sleep = fetch.requests.get, fetch.time.sleep
     fetch.requests.get, fetch.time.sleep = fake_get, lambda s: None
     try:
-        out, done = fetch.earnings_calendar()
+        out, done = fetch.earnings_calendar(back=10)
     finally:
         fetch.requests.get, fetch.time.sleep = real_get, real_sleep
     assert out == {"BRK-B": [nxt.strftime("%Y-%m-%d"), "bmo"]}
     assert done == {"RNG": past.strftime("%Y-%m-%d"), "LOSS": past.strftime("%Y-%m-%d")}  # no EPS yet = not confirmed
+
+
+def test_earnings_calendar_cache_keeps_past_days(tmp_path=None):
+    import tempfile
+    cache = pathlib.Path(tempfile.mkdtemp()) / "done.json"
+    today = fetch.pd.Timestamp.now(tz="America/New_York").normalize()
+    old = next(d for d in fetch.pd.date_range(end=today - fetch.pd.Timedelta(days=30), periods=7)[::-1] if d.weekday() < 5)
+    cache.write_text(fetch.json.dumps({old.strftime("%Y-%m-%d"): ["A"], "2020-01-02": ["ZZZ"]}))
+    asked = []
+
+    def fake_get(url, **kw):
+        asked.append(url.rsplit("=", 1)[1])
+        return _Resp([])
+
+    real_get, real_sleep = fetch.requests.get, fetch.time.sleep
+    fetch.requests.get, fetch.time.sleep = fake_get, lambda s: None
+    try:
+        out, done = fetch.earnings_calendar(back=60, cache_file=cache)
+        asked_first = len(asked)
+        asked.clear()
+        fetch.earnings_calendar(back=60, cache_file=cache)
+    finally:
+        fetch.requests.get, fetch.time.sleep = real_get, real_sleep
+    assert done == {"A": old.strftime("%Y-%m-%d")}  # an August report confirmed from the cache, not asked again
+    assert old.strftime("%Y-%m-%d") not in asked
+    assert len(asked) < asked_first <= 60  # second run only asks the last few days and the weeks ahead
+    saved = fetch.json.loads(cache.read_text())
+    assert "2020-01-02" not in saved and saved[old.strftime("%Y-%m-%d")] == ["A"]

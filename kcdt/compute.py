@@ -125,6 +125,26 @@ def eps_yoy(gaap, adj, qend=None):
     return out
 
 
+def _same(a, b, rel, tol=0.0):
+    return a is not None and b is not None and abs(a - b) <= max(tol, rel * abs(b))
+
+
+def nasdaq_qend(f):
+    """End of the latest quarter in Nasdaq's history, which carries no dates: Yahoo's latest quarter end when
+    both show the same revenue and EPS, or the quarter before it when Nasdaq has not added the newest one yet."""
+    q, revq, epsq = f.get("qend"), f.get("revq") or [], f.get("epsq") or []
+    nrev, neps = f.get("nrev") or [], f.get("neps") or []
+    if not q:
+        return None
+    for i in range(2):
+        same = [ok(n[0], y[i]) for n, y, ok in ((nrev, revq, lambda a, b: _same(a, b, 0.003)),
+                                                  (neps, epsq, lambda a, b: _same(a, b, 0.02, 0.011)))
+                if n and len(y) > i and None not in (n[0], y[i])]
+        if same and all(same):
+            return (pd.Timestamp(q) - pd.DateOffset(months=3 * i)).strftime("%Y-%m-%d")
+    return None
+
+
 def fundamentals_row(f):
     """Derived fundamental fields from one cached Yahoo record."""
     if not f:
@@ -144,7 +164,7 @@ def fundamentals_row(f):
     g3e, g3eb = next(((g, b) for g, b in ((yoy3(neps), "g"), (yoy3(epsq), "g"), (yoy3(epsh), "a")) if g is not None),
                      (None, None))
     yq = len(epsq) >= 5 and None not in (epsq[0], epsq[4])  # Yahoo's statement comes with its quarter end date
-    eps = eps_yoy(epsq if yq else neps, epsh, f.get("qend") if yq else None)
+    eps = eps_yoy(epsq if yq else neps, epsh, f.get("qend") if yq else nasdaq_qend(f))
     rising = lambda xs: len(xs) >= 3 and None not in xs[:3] and xs[0] > xs[1] > xs[2]
     efc, rfc = f.get("efc") or [None, None], f.get("rfc") or [None, None]
     pct = lambda x: None if x is None else x * 100
@@ -169,7 +189,7 @@ def fundamentals_row(f):
     )
 
 
-def build(px, meta, fund=None, fng=None, earn=None, done=None):
+def build(px, meta, fund=None, fng=None, earn=None, done=None, prof=None):
     """px: dict of OHLCV DataFrames. meta: DataFrame indexed by ticker with n, gics, ndx, sp500...
     fund: {ticker: cached Yahoo record}."""
     fund = fund or {}
@@ -215,7 +235,8 @@ def build(px, meta, fund=None, fng=None, earn=None, done=None):
         m200b = ma200[t].iloc[-21]
         tt = [lc > m50, m50 > m200, lc > m200, m200 > m200b, lc >= hi252[t].iloc[-1] * 0.75]
         gics = meta.at[t, "gics"]
-        sec = fund.get(t, {}).get("ysec") or GICS_TO_SECTOR.get(gics, gics or "")
+        p = (prof or {}).get(t, {})  # Yahoo sector/industry for stocks without a fundamentals lookup
+        sec = fund.get(t, {}).get("ysec") or p.get("ysec") or GICS_TO_SECTOR.get(gics, gics or "")
         row = dict(
             s=t, n=meta.at[t, "n"], sec=sec, ndx=bool(meta.at[t, "ndx"]), idx=bool(meta.at[t, "idx"]),
             us=None if pd.isna(meta.at[t, "us"]) else bool(meta.at[t, "us"]),
@@ -234,6 +255,8 @@ def build(px, meta, fund=None, fng=None, earn=None, done=None):
                        px50=bool(ma50p[t] > ma200p[t]), pvol=int(v[t].iloc[-2]) if not pd.isna(v[t].iloc[-2]) else 0,
                        prsr=None if pd.isna(rs_prev[t]) else int(rs_prev[t]))
         row.update(fundamentals_row(fund.get(t)))
+        if not row.get("ind") and p.get("ind"):
+            row["ind"] = p["ind"]
         if fund.get(t, {}).get("_ts"):
             row["fts"] = pd.Timestamp(fund[t]["_ts"], unit="s").strftime("%Y-%m-%d")
         if earn and t in earn:  # Nasdaq's calendar is more current than Yahoo and says before/after the market

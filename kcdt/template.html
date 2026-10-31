@@ -799,12 +799,15 @@ function el(tag, attrs, parent){const e=document.createElementNS(NS,tag);for(con
 function setPressed(ids, on){ids.forEach(id=>$(id).setAttribute('aria-pressed', id===on?'true':'false'))}
 const tk = s => `<a class="tk" href="#s/${encodeURIComponent(s.s)}">${s.s}</a>`;
 // EPS growth = GAAP (company accounts) latest quarter vs the same quarter a year earlier; ⚠ when the % can mislead
-const EW={turn:'轉虧為盈：去年同季蝕錢，百分比冇意義',loss:'仍然蝕緊錢：百分比只反映虧損變化',base:'基數接近零：去年同季 EPS 好細，百分比會被放大',gap:'GAAP 同經調整 EPS 相差大，可能有一次性項目'};
+const EW={turn:'轉虧為盈：去年同季蝕錢，百分比冇意義',loss:'而家蝕緊錢，百分比冇意義，改為寫轉虧／虧損擴大／虧損收窄',base:'基數接近零：去年同季 EPS 好細，百分比會被放大',gap:'GAAP 同經調整 EPS 相差大，可能有一次性項目'};
 const ewTitle = s => (s.ew||[]).map(k=>EW[k]).join('；');
-const epsTxt = s => (s.ew||[]).includes('turn')?'轉盈':s.eq==null?null:sgn(s.eq,1);
-const warnMark = s => (s.ew||[]).some(k=>k!=='turn')?' <span class="warn" aria-hidden="true">⚠</span>':'';
+// a % across a loss means nothing, so say what happened instead (轉盈, 轉虧, 虧損擴大, 虧損收窄)
+const epsSign = s => { if((s.ew||[]).includes('turn')) return '轉盈'; const v=s.eqv; if(!v||v[0]>=0) return null;
+  return v[1]>0?'轉虧':v[1]<0?(v[0]<v[1]?'虧損擴大':'虧損收窄'):'虧損' };
+const epsTxt = s => epsSign(s) || (s.eq==null?null:sgn(s.eq,1));
+const warnMark = s => (s.ew||[]).some(k=>k!=='turn'&&k!=='loss')?' <span class="warn" aria-hidden="true">⚠</span>':'';
 const epsCell = s => { const t=epsTxt(s); return t==null?'<td class="r num"><span class="muted">—</span></td>'
-  : `<td class="r num nowrap ${(s.ew||[]).includes('turn')?'up':cls(s.eq)}"${s.ew?` title="${ewTitle(s)}"`:''}>${t}${warnMark(s)}</td>` };
+  : `<td class="r num nowrap ${epsSign(s)?(epsSign(s)==='轉盈'||epsSign(s)==='虧損收窄'?'up':'down'):cls(s.eq)}"${s.ew?` title="${ewTitle(s)}"`:''}>${t}${warnMark(s)}</td>` };
 // Short company name for tight tables (full name stays on the stock page)
 const shortN = n => String(n||'').replace(/\s*-\s*Class [A-Z].*$/i,'').replace(/\s+(Common Stock|Ordinary Shares|Class [A-Z]( Common Stock| Ordinary Shares)?|American Depositary Shares.*|Depositary Shares.*)$/i,'')
   .replace(/,?\s+(Inc\.?|Incorporated|Corp\.?|Corporation|Co\.?|Company|Ltd\.?|Limited|plc|PLC|N\.V\.|S\.A\.|AG|SE|Holdings?|Group|L\.P\.)$/i,'').replace(/,?\s+(Inc\.?|Corp\.?|Holdings?|Group)$/i,'').trim();
@@ -1304,7 +1307,7 @@ function drawChips(){chips(FA,'chipsA');chips(FB,'chipsB');
 const tdn=(x,d=1)=>`<td class="r num">${x==null?'<span class="muted">—</span>':f(x,d)}</td>`;
 const COLS=[
   ['sec','板塊',1,s=>`<td class="small nowrap">${secZh(s)}</td>`,secZh,'Sector（Yahoo Finance）'],
-  ['ind','細分行業',0,s=>`<td class="small">${s.ind?`<button class="linkbtn indf" data-ind="${esc(s.ind)}" title="只睇呢個細分行業">${esc(s.ind)}</button>`:'<span class="muted">未知</span>'}</td>`,indTxt,'Industry（Yahoo Finance）；撳行業名就只睇呢個行業'],
+  ['ind','細分行業',1,s=>`<td class="small nowrap">${s.ind?`<button class="linkbtn indf" data-ind="${esc(s.ind)}" title="只睇呢個細分行業">${esc(s.ind)}</button>`:'<span class="muted">未知</span>'}</td>`,indTxt,'Industry（Yahoo Finance）；撳行業名就只睇呢個行業'],
   ['c','收市',1,s=>tdn(s.c,2),s=>s.c],
   ['chg','今日 %',1,s=>pcell(s.chg,2),s=>s.chg],
   ['rsr','RS',1,s=>`<td class="r"><span class="rs" style="color:${rsColor(s.rsr)}">${s.rsr}</span></td>`,s=>s.rsr,'相對強度排名 1–99，計法見下面「指標計法說明」'],
@@ -1316,7 +1319,7 @@ const COLS=[
   ['d50','距 50 日線 %',1,s=>pcell(s.d50),s=>s.d50],
   ['d200','距 200 日線 %',0,s=>pcell(s.d200),s=>s.d200],
   ['sq','營收增長 %',1,s=>pcell(s.sq),s=>s.sq,'最近一季按年'],
-  ['eq','EPS 增長 %',1,epsCell,s=>(s.ew||[]).includes('turn')?'轉盈':s.eq,'GAAP（原本會計盈利），最近一季對去年同季；⚠ = 百分比要小心睇'],
+  ['eq','EPS 增長 %',1,epsCell,s=>epsSign(s)||s.eq,'GAAP（原本會計盈利），最近一季對去年同季；⚠ = 百分比要小心睇'],
   ['eqa','EPS 增長（經調整）%',0,s=>pcell(s.eqa),s=>s.eqa,'公司公布、分析師比較用嘅經調整 EPS，最近一季按年'],
   ['ni','淨利潤增長 %',0,s=>pcell(s.ni),s=>s.ni,'最近一季按年（Yahoo Finance）'],
   ['g3r','3 季按年（營收/EPS）',1,s=>`<td class="r num small">${pair(s.g3r,s.g3e)}</td>`,s=>[s.g3r,s.g3e].map(x=>x??'').join(' / '),'最近 3 季每季按年增長嘅最低值'],
@@ -1337,10 +1340,12 @@ const COLK=Object.fromEntries(COLS.map(c=>[c[0],c]));
 const COL_STD=COLS.filter(c=>c[2]).map(c=>c[0]), COL_MINI=['c','chg','rsr','rvol'];
 const PHONE=matchMedia('(max-width:640px)').matches;
 let SHOW=new Set((Store.get('cols',null)||(PHONE?COL_MINI:COL_STD)).filter(k=>COLK[k]));
+// 細分行業 became a standard column once every stock had one: add it once to a saved choice that shows 板塊
+if(!Store.get('colind',0)){ if(SHOW.has('sec')&&!SHOW.has('ind')){SHOW.add('ind'); Store.set('cols',[...SHOW])} Store.set('colind',1) }
 const CMP=new Set();
 let SCR_ROWS=[];
 function drawHead(){
-  $('stockhead').innerHTML=`<th class="frz"><button data-k="s">代號</button></th>`+COLS.filter(c=>SHOW.has(c[0])).map(c=>`<th class="${['mvp','tt','edate'].includes(c[0])?'':'r'}"><button data-k="${c[0]}"${c[5]?` title="${c[5]}"`:''}>${c[1]}</button></th>`).join('');
+  $('stockhead').innerHTML=`<th class="frz"><button data-k="s">代號</button></th>`+COLS.filter(c=>SHOW.has(c[0])).map(c=>`<th class="${['mvp','tt','edate','sec','ind'].includes(c[0])?'':'r'}"><button data-k="${c[0]}"${c[5]?` title="${c[5]}"`:''}>${c[1]}</button></th>`).join('');
   document.querySelectorAll('#stocktable th button').forEach(b=>{
     if(b.dataset.k===sortK){b.dataset.active='true'; b.textContent+=sortDir<0?' ▾':' ▴'}
     b.onclick=()=>{const k=b.dataset.k; if(sortK===k)sortDir*=-1; else {sortK=k;sortDir=(k==='s'||k==='edate')?1:-1} drawHead(); renderStocks()}});
@@ -1378,7 +1383,7 @@ const HOW = () => `
     <li>① 收市高過 50 日線 ② 50 日線高過 200 日線 ③ 收市高過 200 日線 ④ 200 日線高過 21 個交易日前（向上）⑤ 收市喺 52 週最高價 25% 以內（用每日最高價計）。</li>
     <li>均線係簡單移動平均。只同自己比較。係常見趨勢模板嘅簡化版，冇計「高過 52 週低位 30%」同 RS 條件（RS 可以另外喺選股器揀）。</li></ul></div>
   <div><h4>基本面同缺數據</h4><ul>
-    <li>營收增長 = 最近一季按年。EPS 增長 = <b>GAAP</b>（原本會計盈利）最近一季對去年同季（個股頁寫明比較邊兩季）；另有經調整 EPS（公司公布、分析師比較用）同淨利潤增長可以揀欄位睇。去年同季蝕錢而家賺錢顯示「轉盈」；仍然蝕錢、去年基數接近零、或者 GAAP 同經調整相差大（可能有一次性項目）會加 ⚠，百分比要小心睇。</li>
+    <li>營收增長 = 最近一季按年。EPS 增長 = <b>GAAP</b>（原本會計盈利）最近一季對去年同季（個股頁寫明比較邊兩季）；另有經調整 EPS（公司公布、分析師比較用）同淨利潤增長可以揀欄位睇。去年同季蝕錢而家賺錢顯示「轉盈」，而家蝕錢就寫「轉虧」、「虧損擴大」或「虧損收窄」；去年基數接近零、或者 GAAP 同經調整相差大（可能有一次性項目）會加 ⚠，百分比要小心睇。</li>
     <li>3 季按年 = 最近 3 季每季按年增長嘅最低值（Nasdaq／Yahoo 季度 GAAP 數據，唔夠先用經調整 EPS）；預測 EPS = 分析師預測（Yahoo）。</li>
     <li>基本面每隻股票大約 7 日輪流更新一次（個股頁有寫最後更新日期）。拎唔到就顯示「—」：預設會被用到嗰項嘅條件篩走，剔「包括資料不足股票」就當符合。</li>
     <li>趨勢分同 RS 只用價格，所以每隻都有；基本面：${fcovTxt}（市值、營收增長、機構持股、Beta 都有）。</li></ul></div>`;
@@ -2158,7 +2163,7 @@ function showStock(t){
     stat('成交量 / 50 日平均', `${kvol(s.vol)} / ${kvol(s.av)}`), stat('市值', s.mcap!=null?f(s.mcap*10,0)+' 億美元':'—'),
     stat('P/E（往績 / 預測）', `${s.pe!=null?f(s.pe,1):'—'} / ${s.fpe!=null?f(s.fpe,1):'—'}`), stat('Beta', f(s.beta,2)),
     stat('營收增長（季，按年）', s.sq!=null?sgn(s.sq)+'%':'—'),
-    stat('EPS 增長（季，按年，GAAP）', epsTxt(s)==null?'—':`<span class="${(s.ew||[]).includes('turn')?'up':cls(s.eq)}">${epsTxt(s)}${s.eq!=null&&!(s.ew||[]).includes('turn')?'%':''}</span>${warnMark(s)}`
+    stat('EPS 增長（季，按年，GAAP）', epsTxt(s)==null?'—':`<span class="${epsSign(s)?(['轉盈','虧損收窄'].includes(epsSign(s))?'up':'down'):cls(s.eq)}">${epsTxt(s)}${epsSign(s)?'':'%'}</span>${warnMark(s)}`
       +(s.eqv?`<br><span class="muted small">EPS ${f(s.eqv[0])} 對 ${f(s.eqv[1])} · ${s.eqd?`${s.eqd[0]} 季對 ${s.eqd[1]} 季`:'最近一季對去年同季'}</span>`:'')
       +(s.ew?`<br><span class="small warntxt">⚠ ${ewTitle(s)}</span>`:''), s.ew||s.eqv?'wide':''),
     stat('EPS 增長（經調整）', s.eqa!=null?`<span class="${cls(s.eqa)}">${sgn(s.eqa)}%</span><br><span class="muted small">公司公布、分析師比較用嘅 EPS</span>`:'—'),
