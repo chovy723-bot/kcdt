@@ -27,6 +27,7 @@ jobs:
         if: always()
         run: |
           git config user.name kcdt-bot; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p shots; touch shots/.keep
           git checkout --orphan claude/probe-shots
           git rm -rq --cached . ; git add shots ; git commit -qm "edgar test"
           git push -f origin claude/probe-shots

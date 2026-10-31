@@ -5,13 +5,17 @@ import requests
 sys.path.insert(0, "app")
 from kcdt.compute import fundamentals_row
 
-UA = {"User-Agent": "KCDT research kcdt-bot@users.noreply.github.com"}
+UA = {"User-Agent": "KCDT Research admin@kcxdt.github.io", "Accept-Encoding": "gzip, deflate"}
 f = json.load(open("app/cache/fundamentals.json"))
 nq = json.load(open("app/cache/nasdaq_quarters.json")) if os.path.exists("app/cache/nasdaq_quarters.json") else {}
 f = {t: {**r, **nq.get(t, {})} for t, r in f.items()}
 rows = {t: fundamentals_row(r) for t, r in f.items()}
 eq = sorted(t for t, r in rows.items() if r.get("eqv"))
-ciks = {x["ticker"].upper(): x["cik_str"] for x in requests.get("https://www.sec.gov/files/company_tickers.json", headers=UA, timeout=60).json().values()}
+r = requests.get("https://www.sec.gov/files/company_tickers.json", headers=UA, timeout=60)
+if r.status_code != 200:
+    open("shots/edgar_err.txt", "w").write(f"{r.status_code}\n{dict(r.headers)}\n{r.text[:2000]}")
+    print(r.status_code, r.text[:500]); sys.exit(1)
+ciks = {x["ticker"].upper(): x["cik_str"] for x in r.json().values()}
 
 
 def quarters(cik):
