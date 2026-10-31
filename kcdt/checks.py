@@ -22,6 +22,12 @@ def run(data, today=None):
     add(0 if full >= part * 0.8 else 1,
         f"基本面覆蓋：{part:,} 隻有部分資料，{full:,} 隻齊備預設篩選所需資料（市值、營收增長、機構持股、Beta）")
 
+    ind = sum(1 for s in st if s.get("ind"))
+    add(0 if ind >= n * 0.95 else 1, f"細分行業（Industry）：{ind:,} / {n:,} 隻有資料（新股每日補）")
+    eqn = sum(1 for s in st if s.get("eqv"))
+    eqd = sum(1 for s in st if s.get("eqv") and s.get("eqd"))
+    add(0 if eqd >= eqn * 0.9 else 1, f"EPS 增長標明比較邊兩季：{eqd:,} / {eqn:,} 隻")
+
     today = pd.Timestamp(today or pd.Timestamp.now(tz="America/New_York").date())
     lag = len(pd.bdate_range(pd.Timestamp(data["asof"]), today)) - 1
     add(0 if lag <= 1 else 2, f"價格日期：{data['asof']}，" + ("係最近一個交易日" if lag <= 1 else f"落後 {lag} 個交易日"))

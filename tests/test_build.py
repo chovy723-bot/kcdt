@@ -64,6 +64,16 @@ def test_eps_yoy():
     assert eps_yoy([1.0, 0.9], [1.0])["eq"] is None
 
 
+def test_nasdaq_qend():
+    from kcdt.compute import nasdaq_qend
+    f = dict(qend="2026-09-27", revq=[94.9e9, 94.0e9], epsq=[1.64, 1.57], nrev=[94.93e9], neps=[1.64])
+    assert nasdaq_qend(f) == "2026-09-27"  # same quarter as Yahoo's statement
+    assert nasdaq_qend({**f, "nrev": [94.04e9], "neps": [1.57]}) == "2026-06-27"  # Nasdaq one quarter behind
+    assert nasdaq_qend({**f, "nrev": [80e9]}) is None  # can't tell which quarter
+    assert nasdaq_qend({**f, "revq": [], "nrev": []}) == "2026-09-27"  # no revenue: EPS decides
+    assert nasdaq_qend({**f, "qend": None}) is None
+
+
 def test_build():
     universe = [f"S{i:04d}" for i in range(1100)] + DOW30[:5]
     tickers = sorted(set(universe + DOW30 + [t for t, _ in INDICES] + [t for t, _ in SECTORS] + ["^NDX", "^VXN", "QQQ"]))
@@ -83,7 +93,10 @@ def test_build():
     a, b = want[1], want[2]  # both were expected on 10-21; only b shows up on Nasdaq's calendar with an actual EPS
     fund[a].update(edate=past, erep=past - 90 * 86400)
     fund[b].update(edate=past, erep=past - 90 * 86400)
-    d = build(px, meta, fund, fng, {"S0001": ["2026-10-29", "amc"]}, {b: "2026-10-22"})
+    other = next(t for t in universe if t not in fund)  # no fundamentals lookup: sector/industry from profiles
+    fund[want[3]].update(epsq=[1.5, 1.2, 1.0, 0.8], nrev=list(fund[want[3]]["revq"]), neps=[1.5, 1.2, 1.0, 0.8, 0.7])
+    d = build(px, meta, fund, fng, {"S0001": ["2026-10-29", "amc"]}, {b: "2026-10-22"},
+              {other: dict(ysec="Industrials", ind="Airlines")})
     assert d["asof"] == "2026-10-27"
     assert len(d["hist"]) == 60 and len(d["stocks"]) == 1105
     assert all(0 <= h["score"] <= 16 for h in d["hist"])
@@ -104,6 +117,10 @@ def test_build():
     assert f0["fts"] and f0["qend"] == "2026-09-30" and f0["erep"] >= f0["fts"]  # reported after the last fetch
     assert f0["eq"] == 114.3 and f0["eqa"] == 114.3 and f0["eqv"] == [1.5, 0.7] and f0["eqd"] == ["2026-09", "2025-09"]
     assert f0["ew"] is None and f0["g3eb"] == "a" and f0["ni"] is not None and f0["ind"]
+    so = next(s for s in d["stocks"] if s["s"] == other)
+    assert so["sec"] == "Industrials" and so["ind"] == "Airlines" and "fts" not in so
+    f3 = next(s for s in d["stocks"] if s["s"] == want[3])  # GAAP EPS from Nasdaq, dated by Yahoo's revenue
+    assert f3["eqv"] == [1.5, 0.7] and f3["eqd"] == ["2026-09", "2025-09"]
     sa, sb = (next(s for s in d["stocks"] if s["s"] == t) for t in (a, b))
     assert sa["eold"] == "2026-10-21" and sa["edate"] is None  # passed, not confirmed: next date unknown
     assert "eold" not in sb and sb["erep"] == "2026-10-22" and sb["edate"] is None
@@ -121,6 +138,7 @@ def test_build():
 
 
 if __name__ == "__main__":
+    test_nasdaq_qend()
     import json, pathlib, sys
     from kcdt import __main__ as m
     d, pages = test_build()
