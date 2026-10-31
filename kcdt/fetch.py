@@ -370,15 +370,31 @@ def _earn_rows(day):
         time.sleep(0.5)
 
 
-def earnings_calendar(days=15, back=10):
+def earnings_calendar(days=15, back=100, cache_file=None):
     """({ticker: [date, "bmo" | "amc" | None]} for the next `days` calendar days,
-    {ticker: date} of reports in the last `back` days that came with an actual EPS, i.e. confirmed as published)."""
+    {ticker: date} of reports in the last `back` days that came with an actual EPS, i.e. confirmed as published).
+
+    Past days don't change once the numbers are in, so they are kept in `cache_file` ({date: [tickers]}) and only
+    the last few days are asked for again; the first run fills a whole quarter."""
     out, done = {}, {}
     start = pd.Timestamp.now(tz="America/New_York").normalize()
+    path = pathlib.Path(cache_file) if cache_file else None
+    seen = {}
+    if path and path.exists():
+        try:
+            seen = json.loads(path.read_text())
+        except Exception:
+            seen = {}
+    recent = (start - pd.Timedelta(days=4)).strftime("%Y-%m-%d")  # late EPS figures still arriving
     for d in pd.date_range(start - pd.Timedelta(days=back), periods=back + days):
         if d.weekday() >= 5:
             continue
         day = d.strftime("%Y-%m-%d")
+        if d < start and day in seen and day < recent:
+            for sym in seen[day]:
+                done[sym] = max(done.get(sym, day), day)
+            continue
+        got = []
         for row in _earn_rows(day):
             sym = (row.get("symbol") or "").strip().replace(".", "-")
             if not sym:
@@ -387,6 +403,13 @@ def earnings_calendar(days=15, back=10):
                 out[sym] = [day, EARN_TIME.get(row.get("time"))]
             elif d < start and re.search(r"\d", str(row.get("eps") or "")):  # "$1.23", "($0.12)"; blank until published
                 done[sym] = max(done.get(sym, day), day)
+                got.append(sym)
+        if d < start:
+            seen[day] = got
+    if path:
+        first = (start - pd.Timedelta(days=back + 10)).strftime("%Y-%m-%d")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({k: v for k, v in sorted(seen.items()) if k >= first}))
     print(f"earnings calendar: {len(out)} companies in the next {days} days, {len(done)} reported in the last {back}")
     return out, done
 

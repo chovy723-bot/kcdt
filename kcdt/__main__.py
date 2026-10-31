@@ -99,7 +99,7 @@ def main():
                          reports={t: r["erep"] for t, r in fund.items() if r.get("erep")})
     fund = {t: {**rec, **nq.get(t, {}), "_ts": max(rec.get("_ts", 0), nq.get(t, {}).get("_ts", 0))}
             for t, rec in fund.items()}
-    earn, done = earnings_calendar()
+    earn, done = earnings_calendar(cache_file=ROOT / "cache" / "earnings_done.json")
     data = build(px, meta, fund, fear_greed(ROOT / "cache" / "fear_greed.json"), earn, done)
     data["econ"], data["econ_t"] = economic_calendar(labels_file="cache/econ_labels.json"), now_utc()
     data["news"], data["news_t"] = headlines(), now_utc()
