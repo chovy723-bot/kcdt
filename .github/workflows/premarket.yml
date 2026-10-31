@@ -2,10 +2,13 @@ name: Pre-market brief
 
 # 每日盤前需知, ready about 3 hours before the 09:30 New York open (06:30 New York).
 # 09:50 UTC = 05:50 New York in summer time; 10:50 UTC = 05:50 in winter time. The script only runs when it is
-# 05:30–09:30 in New York and today's brief doesn't exist yet, so one of the two runs does the work.
+# 05:30–09:30 in New York and today's brief doesn't exist yet, so the first run in that window does the work.
+# GitHub starts scheduled runs late or skips them when busy (the first 09:50 run began at 10:28), so the
+# :20 slots are backups; a run that finds today's brief already published stops without deploying.
 on:
   schedule:
     - cron: "50 9,10 * * 1-5"
+    - cron: "20 10,11 * * 1-5"
   workflow_dispatch:
 
 permissions:
